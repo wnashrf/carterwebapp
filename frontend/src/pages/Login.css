@@ -1,0 +1,81 @@
+/* ============================================================
+   Login page — Sakai/PrimeReact style.
+   Layout + branding only; component styling comes from the
+   PrimeReact Lara theme + PrimeFlex utilities.
+   ============================================================ */
+
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: linear-gradient(
+    135deg,
+    var(--primary-color, #6366f1) 0%,
+    #312e81 100%
+  );
+}
+
+.login-card {
+  width: 100%;
+  max-width: 460px;
+  background: var(--surface-card, #ffffff);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.35);
+}
+
+.login-logo {
+  font-size: 2.75rem;
+  color: var(--primary-color, #6366f1);
+  background: var(--primary-50, #eef2ff);
+  padding: 1rem;
+  border-radius: 50%;
+  margin-bottom: 1rem;
+}
+
+.login-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-color, #1f2937);
+  margin-bottom: 0.5rem;
+}
+
+.login-subtitle {
+  color: var(--text-color-secondary, #6b7280);
+  font-size: 0.95rem;
+}
+
+.login-label {
+  display: block;
+  font-weight: 600;
+  color: var(--text-color, #1f2937);
+  margin-bottom: 0.5rem;
+}
+
+.login-forgot {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary-color, #6366f1);
+  text-decoration: none;
+}
+
+.login-forgot:hover {
+  text-decoration: underline;
+}
+
+.login-divider-text {
+  color: var(--text-color-secondary, #6b7280);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.login-toggle {
+  font-weight: 700;
+}
+
+/* Make the Password field span the full width of its wrapper */
+.login-card .p-password,
+.login-card .p-password .p-inputtext {
+  width: 100%;
+}
