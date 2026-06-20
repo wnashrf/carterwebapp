@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
@@ -9,8 +9,8 @@ import { Badge } from 'primereact/badge';
 import { Card } from 'primereact/card';
 import { Dialog } from 'primereact/dialog';
 import { Divider } from 'primereact/divider';
-import { Tag } from 'primereact/tag';
 import { Toast } from 'primereact/toast';
+import { getCart, addToCart, updateCartQuantity, deleteFromCart, redeemCart } from '../api/cart';
 import './Home.css';
 
 const navItems = ['Explore', 'Deals', 'Rewards', 'Wallet'];
@@ -20,63 +20,77 @@ const profileImage =
 const SERVICE_FEE = 2.5;
 const DISCOUNT = 10.0;
 
-const INITIAL_CART = [
-  {
-    id: 1,
-    title: 'Gourmet Dining Experience',
-    subtitle: 'Valid at 50+ Premium Locations',
-    price: 120.0,
-    qty: 1,
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuCvEQ1T_XV_zTVuMyy7dRYwNDlJ00oDPlaHOAyXUsofF-wz8GDF87gHOdlbqSX0G_1SvBF2o5K0ZG9_5b3O_nU0lA0ZNBq9Cg9ci_dndlkukF4ER4wPHezMOZC2ltFo1ADE3Mg_7zYehHLv4tqp5n8jeVSrrjbWtRBHIj2IE4lzvoIfI4W_QF0NeIai8rPoUsxZMPMh7DFuAfgzclgKDH0Ql7SwRheZ9wNdoQEc9THS1hc-C4Mt8XGPtvje4AL4JJORy078gWMh7D_Y',
-  },
-  {
-    id: 2,
-    title: 'Luxury Spa Weekend',
-    subtitle: 'Full Body Treatment & Sauna',
-    price: 175.0,
-    qty: 2,
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuCC0gfOn50jO9AMV91msX4ouBrpLj2Cuh8lGC48NMTyUDmuofkziKgSMMPd3auH3fxzvOCrexH0sMyFDTi9TM8imw0BnklsvvA5E-g89IbNY3uw35XlP8-2e0CGHshekdVTBlMMfqJrDCtT7vjIrms-A7VBv8CEEOQi_C-28INEq7uOdkXTixc47gA8JbZL8sOz1waMq-hKMpoSXV-fGvsG3ZOQGr0F0HaR1w-D6FKWNbi6j67fnaC48wm80tf8CtqX4HuDc1jNcxkc',
-  },
-];
-
-function toCartItem(v) {
-  return {
-    id: v._id || String(Date.now()),
-    title: v.title,
-    subtitle: v.category_id?.name || 'General',
-    price: Number(v.points) || 0,
-    qty: 1,
-    image: v.image || '',
-    unit: 'pts',
-  };
-}
-
-function Checkout() {
+function Cart() {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useRef(null);
-  const [items, setItems] = useState(() => {
-    const incoming = location.state?.voucher;
-    return incoming ? [toCartItem(incoming)] : INITIAL_CART;
-  });
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [promoCode, setPromoCode] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [dialogVisible, setDialogVisible] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const addedRef = useRef(false);
 
-  const updateQty = (id, delta) => {
-    setItems(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, qty: Math.max(1, item.qty + delta) } : item
-      )
-    );
+  useEffect(() => {
+    let active = true;
+    async function initCart() {
+      try {
+        const incoming = location.state?.voucher;
+        if (incoming && !addedRef.current) {
+          addedRef.current = true;
+          // Clear location state so we don't add it again on refresh
+          window.history.replaceState({}, document.title);
+          await addToCart(incoming._id, 1);
+        }
+        const data = await getCart();
+        if (!active) return;
+        const mapped = data.map(item => ({
+          id: item._id,
+          voucherId: item.voucher._id,
+          title: item.voucher.title,
+          subtitle: item.voucher.category_id?.name || 'General',
+          price: Number(item.voucher.points) || 0,
+          qty: item.quantity,
+          image: item.voucher.image || '',
+          unit: 'pts'
+        }));
+        setItems(mapped);
+      } catch (err) {
+        if (!active) return;
+        setError(err.message || 'Failed to load cart');
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+    initCart();
+    return () => { active = false; };
+  }, [location.state]);
+
+  const updateQty = async (id, delta) => {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    const newQty = Math.max(1, item.qty + delta);
+    try {
+      await updateCartQuantity(id, newQty);
+      setItems(prev =>
+        prev.map(i => (i.id === id ? { ...i, qty: newQty } : i))
+      );
+    } catch (err) {
+      toast.current.show({ severity: 'error', summary: 'Error', detail: 'Failed to update quantity.', life: 3000 });
+    }
   };
 
-  const removeItem = (id) => {
-    setItems(prev => prev.filter(item => item.id !== id));
+  const removeItem = async (id) => {
+    try {
+      await deleteFromCart(id);
+      setItems(prev => prev.filter(i => i.id !== id));
+      toast.current.show({ severity: 'success', summary: 'Removed', detail: 'Item removed from cart.', life: 3000 });
+    } catch (err) {
+      toast.current.show({ severity: 'error', summary: 'Error', detail: 'Failed to remove item.', life: 3000 });
+    }
   };
 
   const applyPromo = () => {
@@ -89,13 +103,19 @@ function Checkout() {
   const total = usePts ? subtotal : subtotal + SERVICE_FEE - DISCOUNT;
   const fmt = (n) => usePts ? `${n.toLocaleString()} pts` : `$${n.toFixed(2)}`;
 
-  const placeOrder = () => {
+  const placeOrder = async () => {
     setProcessing(true);
-    setTimeout(() => {
+    try {
+      await redeemCart();
       setProcessing(false);
       setOrderSuccess(true);
       setDialogVisible(true);
-    }, 800);
+      setItems([]);
+    } catch (err) {
+      setProcessing(false);
+      setOrderSuccess(false);
+      setDialogVisible(true);
+    }
   };
 
   const downloadPDF = async () => {
@@ -243,7 +263,7 @@ function Checkout() {
               <i className="pi pi-search" />
               <InputText placeholder="Search vouchers..." className="home-search" />
             </span>
-            <Button icon="pi pi-shopping-cart" rounded text severity="secondary">
+            <Button icon="pi pi-shopping-cart" rounded text severity="secondary" onClick={() => navigate('/cart')}>
               <Badge value={items.length} severity="danger" className="home-cart-badge" />
             </Button>
             <Avatar image={profileImage} shape="circle" size="large" />
@@ -510,4 +530,4 @@ function Checkout() {
   );
 }
 
-export default Checkout;
+export default Cart;

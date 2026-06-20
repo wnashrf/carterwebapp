@@ -130,7 +130,7 @@ function VoucherCategory() {
               <i className="pi pi-search" />
               <InputText placeholder="Search vouchers..." className="home-search" />
             </span>
-            <Button icon="pi pi-shopping-cart" rounded text severity="secondary">
+            <Button icon="pi pi-shopping-cart" rounded text severity="secondary" onClick={() => navigate('/cart')}>
               <Badge value="2" severity="danger" className="home-cart-badge" />
             </Button>
             <Avatar image={profileImage} shape="circle" size="large" />
