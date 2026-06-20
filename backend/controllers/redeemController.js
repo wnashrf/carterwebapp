@@ -1,4 +1,8 @@
 // controllers/redeemController.js
+const CartItem = require('../models/CartItem');
+const User = require('../models/User');
+const CartItemHistory = require('../models/CartItemHistory');
+
 exports.redeem = async (req, res) => {
   try {
     const items = await CartItem.find({ user: req.userId }).populate('voucher');

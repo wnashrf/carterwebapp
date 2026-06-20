@@ -148,6 +148,7 @@ function Home() {
               text
               severity="secondary"
               aria-label="Cart"
+              onClick={() => navigate('/cart')}
             >
               <Badge value="2" severity="danger" className="home-cart-badge" />
             </Button>

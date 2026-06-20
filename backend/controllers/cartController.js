@@ -3,10 +3,11 @@ const CartItem = require('../models/CartItem');
 // Add voucher to cart (or increment quantity if exists)
 exports.addToCart = async (req, res) => {
   try {
-    const { user, voucher, quantity } = req.body;
+    const { voucher, quantity } = req.body;
+    const user = req.userId;
     if (!user || !voucher) return res.status(400).json({ message: 'user and voucher are required' });
 
-    let item = await CartItem.findOne({ user, voucher });
+    let item = await CartItem.findOne({ user: req.userId, voucher: voucher });
     if (item) {
       item.quantity = item.quantity + (quantity || 1);
       await item.save();
@@ -23,8 +24,7 @@ exports.addToCart = async (req, res) => {
 // Get cart items for a user
 exports.getCartForUser = async (req, res) => {
   try {
-    const userId = req.params.userId;
-    const items = await CartItem.find({ user: userId }).populate({ path: 'voucher', populate: { path: 'category_id' } });
+    const items = await CartItem.find({ user: req.userId }).populate({ path: 'voucher', populate: { path: 'category_id' } });
     res.json(items);
   } catch (err) {
     res.status(500).json({ message: err.message });

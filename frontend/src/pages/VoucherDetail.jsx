@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -70,6 +71,34 @@ function VoucherDetail() {
     });
   };
 
+  const handleAddToCart = async () => {
+  try {
+    // 1. Tell the backend to add this specific voucher to the user's cart database
+    // We assume your backend expects the voucher ID and an initial quantity
+    await axios.post('http://localhost:5000/api/cart', { 
+      voucher: voucher._id, 
+      quantity: 1 
+    }, {
+      headers: {
+        // Include your JWT auth token so your auth middleware can decode req.userId!
+        Authorization: `Bearer ${localStorage.getItem('token')}` 
+      }
+    });
+
+    // 2. Wait for the database write to successfully finish, THEN change pages
+    navigate('/cart');
+
+  } catch (error) {
+    console.error("Failed to update database cart:", error);
+    toast.current.show({
+      severity: 'error',
+      summary: 'Cart Error',
+      detail: 'Could not add item to cart. Please try again.',
+      life: 3000,
+    });
+  }
+};
+
   return (
     <div className="home-shell">
       <Toast ref={toast} />
@@ -105,7 +134,7 @@ function VoucherDetail() {
               <i className="pi pi-search" />
               <InputText placeholder="Search vouchers..." className="home-search" />
             </span>
-            <Button icon="pi pi-shopping-cart" rounded text severity="secondary">
+            <Button icon="pi pi-shopping-cart" rounded text severity="secondary" onClick={() => navigate('/cart')}>
               <Badge value="2" severity="danger" className="home-cart-badge" />
             </Button>
             <Avatar image={profileImage} shape="circle" size="large" />
@@ -224,7 +253,7 @@ function VoucherDetail() {
                   icon="pi pi-shopping-cart"
                   className="w-full"
                   outlined
-                  onClick={() => navigate('/checkout', { state: { voucher } })}
+                  onClick={handleAddToCart}
                 />
 
                 <div
