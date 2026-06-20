@@ -14,11 +14,12 @@ import { RadioButton } from 'primereact/radiobutton';
 import { Dropdown } from 'primereact/dropdown';
 import { Toast } from 'primereact/toast';
 import { getVouchers } from '../api/vouchers';
+import { useParams } from 'react-router-dom';
 import './Home.css';
 
 const navItems = [
   { label: 'Explore', path: '/Home' },
-  { label: 'Deals', path: '/voucher-category' },
+  { label: 'Deals', path: '/categories' },
   { label: 'Rewards', path: '#' },
   { label: 'Wallet', path: '#' }
 ];
@@ -44,6 +45,7 @@ function formatVoucherValue(points) {
 }
 
 function VoucherCategory() {
+  const { categoryId } = useParams();
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -52,9 +54,21 @@ function VoucherCategory() {
   const toast = useRef(null);
   const navigate = useNavigate();
 
+  const filteredVouchers = vouchers.filter(voucher => {
+    if (!categoryId || categoryId === 'all') return true; 
+    const currentVoucherCategory = (voucher.category_id?.name || 'General').toLowerCase().trim();
+    if (categoryId === 'home_garden') {
+      return currentVoucherCategory === 'home & garden';
+    }
+    return currentVoucherCategory === categoryId.toLowerCase().trim();
+  });
+
   const breadcrumbItems = [
     { label: 'Categories' },
-    { label: 'Food & Dining', className: 'font-bold text-primary' }
+    { 
+      label: categoryId ? categoryId.charAt(0).toUpperCase() + categoryId.slice(1) : 'All Vouchers', 
+      className: 'font-bold text-primary' 
+    }
   ];
   const breadcrumbHome = { icon: 'pi pi-home', url: '/' };
 
@@ -145,8 +159,42 @@ function VoucherCategory() {
           {/* ---------- Sidebar Filters ---------- */}
           <aside className="col-12 md:col-3 pr-4">
             <div className="mb-4 pb-3 border-bottom-1 border-300">
-              <h2 className="text-2xl font-bold mb-1">Food & Dining</h2>
-              <p className="text-secondary text-sm">{vouchers.length} vouchers available</p>
+              <h2 className="text-2xl font-bold mb-1">
+                {categoryId ? categoryId.charAt(0).toUpperCase() + categoryId.slice(1) : 'All Vouchers'}
+              </h2>
+              <p className="text-secondary text-sm">{filteredVouchers.length} vouchers available</p>
+            </div>
+
+            <div className="mb-5">
+              <h4 className="font-bold mb-3">Categories</h4>
+              <div className="grid g-2">
+                {[
+                  { name: 'All Vouchers', id: 'all', icon: 'pi-th-large', path: '/categories' },
+                  { name: 'Electronics', id: 'electronics', icon: 'pi-shopping-bag', path: '/categories/electronics' },
+                  { name: 'Books', id: 'books', icon: 'pi-book', path: '/categories/books' },
+                  { name: 'Home & Garden', id: 'home_garden', icon: 'pi-home', path: '/categories/home_garden' }
+                ].map(cat => {
+                  const isActive = (cat.id === 'all' && !categoryId) || categoryId === cat.id;
+
+                  return (
+                    <div key={cat.id} className="col-6 mb-2">
+                      <div 
+                        onClick={() => navigate(cat.path)}
+                        className={`flex flex-column align-items-center justify-content-center p-3 border-round-xl border-1 text-center cursor-pointer transition-all transition-duration-150 ${
+                          isActive 
+                            ? 'bg-primary-50 border-primary text-primary shadow-1 font-bold' 
+                            : 'bg-white border-200 hover:border-400 hover:shadow-1'
+                        }`}
+                        style={{ minHeight: '85px' }}
+                      >
+                        {/* Added pointer-events-none to safeguard nested clicks */}
+                        <i className={`pi ${cat.icon} text-xl mb-2 pointer-events-none ${isActive ? 'text-primary' : 'text-secondary'}`} />
+                        <span className="text-xs font-semibold line-height-2 pointer-events-none">{cat.name}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="mb-5">
@@ -204,7 +252,7 @@ function VoucherCategory() {
               <Message severity="error" text={error} className="w-full" />
             ) : (
               <div className="grid">
-                {vouchers.map((voucher) => (
+                {filteredVouchers.map((voucher) => (
                   <div className="col-12 md:col-6 lg:col-4 mb-4" key={voucher._id}>
                     <Card className="home-voucher h-full shadow-1 border-none hover:shadow-3 transition-all transition-duration-200">
                       <div className="home-voucher__image-wrap">
@@ -252,7 +300,7 @@ function VoucherCategory() {
                       <i className="pi pi-plus text-primary" />
                     </div>
                     <p className="font-bold mb-1">View More Offers</p>
-                    <p className="text-secondary text-xs">Showing {vouchers.length} vouchers</p>
+                    <p className="text-secondary text-xs">Showing {filteredVouchers.length} vouchers</p>
                   </div>
                 </div>
               </div>

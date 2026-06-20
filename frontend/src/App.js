@@ -13,7 +13,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/Home" element={<Home />} />
-        <Route path="/voucher-category" element={<VoucherCategory />} />
+        <Route path="/categories/:categoryId" element={<VoucherCategory />} />
+        <Route path="/categories" element={<VoucherCategory />} />
         <Route path="/voucher-detail" element={<VoucherDetail />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/profile" element={<Profile />} />
