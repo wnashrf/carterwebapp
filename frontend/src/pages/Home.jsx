@@ -13,7 +13,7 @@ import './Home.css';
 
 const navItems = [
   { label: 'Explore', path: '/Home' },
-  { label: 'Deals', path: '/voucher-category' },
+  { label: 'Deals', path: '/categories' },
   { label: 'Rewards', path: '#' },
   { label: 'Wallet', path: '#' }
 ];
