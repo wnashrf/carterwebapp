@@ -1,7 +1,9 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const connectDB = require('./config/db');
+
 // Mount route modules
 const categoryRoutes = require('./routes/categoryRoutes');
 const voucherRoutes = require('./routes/voucherRoutes');
@@ -16,6 +18,21 @@ connectDB();
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.get('/vouchers/download/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const safePattern = /^VOUCHER_[A-Z0-9]{6,8}_\d+\.pdf$/i;
+  if (!safePattern.test(filename)) {
+    return res.status(400).send('Invalid file format request.');
+  }
+
+  const filePath = path.resolve(__dirname, 'vouchers', filename);
+  res.download(filePath, filename, (err) => {
+    if (err && !res.headersSent) {
+      res.status(404).send('Voucher file not found.');
+    }
+  });
+});
+app.use('/vouchers', express.static(path.join(__dirname, 'vouchers')));
 
 app.use('/api/categories', categoryRoutes);
 app.use('/api/vouchers', voucherRoutes);
