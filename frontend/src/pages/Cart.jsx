@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -17,9 +16,6 @@ const navItems = ['Explore', 'Deals', 'Rewards', 'Wallet'];
 const profileImage =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuCBSuIxUxfHg4wgNs3r-LO4qo6VNboOmg9Kb3aXO51jImuiyOFvXuTrd1wLc7zuGzCYjXZ5uW-DcC-AM0Dx6_HcT74tKyPAwBRGp9jf4ENR6pu1lD2E_6w-CWtUcsf33qMmCjPjGRar-Zs9Ux64NQXcqqYWPA6KLkOYxYtkNHGbhGV1nufUeRWL1bJjpYyc06lh1E3ZH_apHor12onMvLgo1q_GTHEL_AAjC1AMDXJ4yvYmKVbneaw-U35QqqQp0k0tHC7X_odbbPf5';
 
-const SERVICE_FEE = 2.5;
-const DISCOUNT = 10.0;
-
 function Cart() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,7 +24,8 @@ function Cart() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [promoCode, setPromoCode] = useState('');
-  const [cardNumber, setCardNumber] = useState('');
+  const [redemptionCode, setRedemptionCode] = useState('');
+  const [pdfFilename, setPdfFilename] = useState('');
   const [dialogVisible, setDialogVisible] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -93,129 +90,60 @@ function Cart() {
     }
   };
 
-  const applyPromo = () => {
-    if (!promoCode.trim()) return;
-    toast.current.show({ severity: 'info', summary: 'Promo Code', detail: 'Invalid or expired code.', life: 3000 });
-  };
-
-  const usePts = items.length > 0 && items.every(i => i.unit === 'pts');
   const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const total = usePts ? subtotal : subtotal + SERVICE_FEE - DISCOUNT;
-  const fmt = (n) => usePts ? `${n.toLocaleString()} pts` : `$${n.toFixed(2)}`;
+  const total = subtotal;
+  const fmt = (n) => `${n.toLocaleString()} pts`;
 
   const placeOrder = async () => {
     setProcessing(true);
     try {
-      await redeemCart();
+      const response = await redeemCart();
+      console.log("Raw API response:", response);
       setProcessing(false);
+
+      const data = response?.data || response;
+
+      console.log("Frontend received parsed data object:", data);
+      // Ensure a valid redemption code is always available for download attempt
+      if (data && data.redemptionCode){
+        setRedemptionCode(data.redemptionCode);
+        setPdfFilename(data.fileName);
+      } else {
+        setRedemptionCode('UNKNOWN-ERR');
+        setPdfFilename('');
+      }
+
       setOrderSuccess(true);
       setDialogVisible(true);
-      setItems([]);
+      setItems([]); // emptied frontend cart state
     } catch (err) {
+      console.error("API Error block caught:", err);
       setProcessing(false);
       setOrderSuccess(false);
       setDialogVisible(true);
     }
   };
 
-  const downloadPDF = async () => {
-    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-    const W = doc.internal.pageSize.getWidth();
-    const code = 'VW-8821-X90';
-    const now = new Date().toLocaleString();
-
-    // Generate QR code as data URL
-    const qrDataUrl = await QRCode.toDataURL(code, { width: 160, margin: 1, color: { dark: '#0f6b45', light: '#ffffff' } });
-
-    // Header band
-    doc.setFillColor(15, 107, 69);
-    doc.rect(0, 0, W, 90, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(26).setFont('helvetica', 'bold');
-    doc.text('CARTER REDEEM', W / 2, 45, { align: 'center' });
-    doc.setFontSize(12).setFont('helvetica', 'normal');
-    doc.text('Loyalty Voucher — Official Redemption Receipt', W / 2, 68, { align: 'center' });
-
-    // Divider
-    doc.setDrawColor(15, 107, 69);
-    doc.setLineWidth(2);
-    doc.line(40, 110, W - 40, 110);
-
-    // Voucher items
-    doc.setTextColor(30, 30, 30);
-    doc.setFontSize(14).setFont('helvetica', 'bold');
-    doc.text('Voucher(s) Redeemed', 40, 140);
-
-    let y = 165;
-    items.forEach((item) => {
-      doc.setFontSize(11).setFont('helvetica', 'bold');
-      doc.text(`• ${item.title}`, 50, y);
-      doc.setFont('helvetica', 'normal').setFontSize(10);
-      doc.setTextColor(100, 100, 100);
-      doc.text(`  ${item.subtitle}   ×${item.qty}   ${item.unit === 'pts' ? `${(item.price * item.qty).toLocaleString()} pts` : `$${(item.price * item.qty).toFixed(2)}`}`, 50, y + 16);
-      doc.setTextColor(30, 30, 30);
-      y += 42;
-    });
-
-    // Summary box
-    y += 10;
-    doc.setFillColor(240, 249, 244);
-    doc.roundedRect(40, y, W - 80, usePts ? 60 : 90, 6, 6, 'F');
-    doc.setFontSize(11).setFont('helvetica', 'normal').setTextColor(80, 80, 80);
-    doc.text(`Subtotal:`, 60, y + 22);
-    doc.setFont('helvetica', 'bold').setTextColor(30, 30, 30);
-    doc.text(fmt(subtotal), W - 60, y + 22, { align: 'right' });
-    if (!usePts) {
-      doc.setFont('helvetica', 'normal').setTextColor(80, 80, 80);
-      doc.text('Service Fee:', 60, y + 42);
-      doc.setFont('helvetica', 'bold').setTextColor(30, 30, 30);
-      doc.text(fmt(SERVICE_FEE), W - 60, y + 42, { align: 'right' });
-      doc.setFont('helvetica', 'normal').setTextColor(22, 163, 74);
-      doc.text('Discount:', 60, y + 62);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`-${fmt(DISCOUNT)}`, W - 60, y + 62, { align: 'right' });
-      y += 30;
-    }
-    doc.setFontSize(13).setFont('helvetica', 'bold').setTextColor(15, 107, 69);
-    doc.text('Total:', 60, y + 52);
-    doc.text(fmt(total), W - 60, y + 52, { align: 'right' });
-
-    // Redemption code + QR box
-    y += usePts ? 90 : 100;
-    const boxH = 130;
-    const qrSize = 100;
-    const qrX = W - 40 - qrSize - 16;
-    const qrY = y + (boxH - qrSize) / 2;
-
-    doc.setFillColor(15, 107, 69);
-    doc.roundedRect(40, y, W - 80, boxH, 8, 8, 'F');
-
-    // Text side
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(11).setFont('helvetica', 'normal');
-    doc.text('REDEMPTION CODE', 60, y + 28);
-    doc.setFontSize(26).setFont('courier', 'bold');
-    doc.text(code, 60, y + 68);
-    doc.setFontSize(9).setFont('helvetica', 'normal');
-    doc.text('Present this code or scan the QR at the counter', 60, y + 90);
-    doc.text('Valid for single use only', 60, y + 106);
-
-    // QR code image (white background card)
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(qrX - 6, qrY - 6, qrSize + 12, qrSize + 12, 4, 4, 'F');
-    doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
-
-    // Date & terms
-    doc.setTextColor(120, 120, 120).setFontSize(9).setFont('helvetica', 'normal');
-    doc.text(`Generated: ${now}`, 40, y);
-    doc.text('Non-transferable. Not redeemable for cash.', W / 2, y + 16, { align: 'center' });
-
-    doc.save(`CartRedeem_${code}.pdf`);
-  };
-
   const successDialogFooter = (
     <div className="flex flex-column gap-2 w-full">
-      <Button label="Download PDF Voucher" icon="pi pi-download" className="w-full" onClick={downloadPDF} />
+      <Button
+        label="Download PDF Voucher"
+        icon="pi pi-download"
+        className="w-full"
+        onClick={() => {
+          if (pdfFilename) {
+            
+            const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
+            
+            const link = document.createElement('a');
+            link.href = `${serverUrl}/vouchers/download/${pdfFilename}`;
+            link.setAttribute('download', pdfFilename);
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
+        }} />
       <Button
         label="Back to Home"
         icon="pi pi-home"
@@ -349,40 +277,6 @@ function Cart() {
                 </div>
               )}
             </Card>
-
-            {/* Payment details */}
-            <Card className="shadow-1 border-none">
-              <h2 className="text-xl font-bold mb-4">
-                <i className="pi pi-lock mr-2" style={{ color: '#22c55e' }} />
-                Secure Payment
-              </h2>
-              <div className="grid">
-                <div className="col-12 md:col-6 field">
-                  <label className="font-semibold text-sm block mb-2" style={{ color: '#6c757d' }}>Card Number</label>
-                  <span className="p-input-icon-left w-full">
-                    <i className="pi pi-credit-card" />
-                    <InputText
-                      value={cardNumber}
-                      onChange={e => setCardNumber(e.target.value)}
-                      placeholder="**** **** **** 4242"
-                      className="w-full"
-                    />
-                  </span>
-                </div>
-                <div className="col-12 md:col-6 field">
-                  <label className="font-semibold text-sm block mb-2" style={{ color: '#6c757d' }}>Promo Code</label>
-                  <div className="flex gap-2">
-                    <InputText
-                      value={promoCode}
-                      onChange={e => setPromoCode(e.target.value)}
-                      placeholder="Enter code"
-                      className="flex-1"
-                    />
-                    <Button label="Apply" outlined onClick={applyPromo} />
-                  </div>
-                </div>
-              </div>
-            </Card>
           </div>
 
           {/* Right column: order summary */}
@@ -396,18 +290,6 @@ function Cart() {
                     <span style={{ color: '#6c757d' }}>Subtotal</span>
                     <span className="font-bold">{fmt(subtotal)}</span>
                   </div>
-                  {!usePts && (
-                    <>
-                      <div className="flex justify-content-between">
-                        <span style={{ color: '#6c757d' }}>Service Fee</span>
-                        <span className="font-bold">{fmt(SERVICE_FEE)}</span>
-                      </div>
-                      <div className="flex justify-content-between" style={{ color: '#16a34a' }}>
-                        <span>Discount</span>
-                        <span className="font-bold">-{fmt(DISCOUNT)}</span>
-                      </div>
-                    </>
-                  )}
                 </div>
 
                 <Divider />
@@ -464,7 +346,7 @@ function Cart() {
             </div>
             <h2 className="text-2xl font-bold mb-2">Redemption Successful!</h2>
             <p style={{ color: '#6c757d', lineHeight: 1.6 }}>
-              Your voucher code <strong className="font-mono">VW-8821-X90</strong> is ready for use.
+              Your voucher code <strong className="font-mono">{redemptionCode}</strong> is ready for use.
               A confirmation email has been sent to you.
             </p>
           </>
