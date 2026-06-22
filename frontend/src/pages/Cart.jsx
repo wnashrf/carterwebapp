@@ -120,6 +120,7 @@ function Cart() {
       console.error("API Error block caught:", err);
       setProcessing(false);
       setOrderSuccess(false);
+      setError(err.message || 'We couldn\'t process your request.')
       setDialogVisible(true);
     }
   };
@@ -132,11 +133,10 @@ function Cart() {
         className="w-full"
         onClick={() => {
           if (pdfFilename) {
-            
             const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
             
             const link = document.createElement('a');
-            link.href = `${serverUrl}/vouchers/download/${pdfFilename}`;
+            link.href = `${serverUrl}/api/vouchers/download/${pdfFilename}`; 
             link.setAttribute('download', pdfFilename);
             
             document.body.appendChild(link);
@@ -360,18 +360,8 @@ function Cart() {
             </div>
             <h2 className="text-2xl font-bold mb-2">Redemption Failed</h2>
             <p style={{ color: '#6c757d', lineHeight: 1.6 }}>
-              We couldn't process your request. The payment authorization was declined.
+              {error || "We couldn't process your request. The payment authorization was declined."}
             </p>
-            <div
-              className="flex align-items-start gap-3 p-3 border-round-lg text-left mt-3"
-              style={{ background: '#fee2e2', border: '1px solid #fca5a5' }}
-            >
-              <i className="pi pi-info-circle mt-1" style={{ color: '#dc2626' }} />
-              <div>
-                <p className="font-bold text-sm" style={{ color: '#dc2626' }}>Error Code: ERR_PAY_AUTH_402</p>
-                <p className="text-sm" style={{ color: '#6c757d' }}>Insufficient funds or bank rejection.</p>
-              </div>
-            </div>
           </>
         )}
       </Dialog>
