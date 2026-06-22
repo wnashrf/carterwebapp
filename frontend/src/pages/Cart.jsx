@@ -12,7 +12,11 @@ import { Toast } from 'primereact/toast';
 import { getCart, addToCart, updateCartQuantity, deleteFromCart, redeemCart } from '../api/cart';
 import './Home.css';
 
-const navItems = ['Explore', 'Deals', 'Rewards', 'Wallet'];
+const navItems = [
+  { label: 'Explore', path: '/home' },
+  { label: 'Categories', path: '/categories/all' },
+  { label: 'Wallet', path: '/wallet' }
+];
 const profileImage =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuCBSuIxUxfHg4wgNs3r-LO4qo6VNboOmg9Kb3aXO51jImuiyOFvXuTrd1wLc7zuGzCYjXZ5uW-DcC-AM0Dx6_HcT74tKyPAwBRGp9jf4ENR6pu1lD2E_6w-CWtUcsf33qMmCjPjGRar-Zs9Ux64NQXcqqYWPA6KLkOYxYtkNHGbhGV1nufUeRWL1bJjpYyc06lh1E3ZH_apHor12onMvLgo1q_GTHEL_AAjC1AMDXJ4yvYmKVbneaw-U35QqqQp0k0tHC7X_odbbPf5';
 
@@ -38,7 +42,6 @@ function Cart() {
         const incoming = location.state?.voucher;
         if (incoming && !addedRef.current) {
           addedRef.current = true;
-          // Clear location state so we don't add it again on refresh
           window.history.replaceState({}, document.title);
           await addToCart(incoming._id, 1);
         }
@@ -149,7 +152,7 @@ function Cart() {
         icon="pi pi-home"
         outlined
         className="w-full"
-        onClick={() => { setDialogVisible(false); navigate('/Home'); }}
+        onClick={() => { setDialogVisible(false); navigate('/home'); }}
       />
     </div>
   );
@@ -174,14 +177,22 @@ function Cart() {
       <header className="home-topbar">
         <div className="home-topbar__inner">
           <div className="flex align-items-center gap-4">
-            <span className="home-brand" style={{ cursor: 'pointer' }} onClick={() => navigate('/Home')}>
+            <span className="home-brand" style={{ cursor: 'pointer' }} onClick={() => navigate('/home')}>
               <i className="pi pi-ticket mr-2" />
               Carter Redeem
             </span>
             <nav className="home-nav hidden lg:flex gap-3">
-              {navItems.map((item, i) => (
-                <a key={item} href="/Home" className={`home-nav__link${i === 3 ? ' is-active' : ''}`}>
-                  {item}
+              {navItems.map((item, index) => (
+                <a 
+                  key={item.label} 
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate(item.path);
+                  }}
+                  className="home-nav__link"
+                >
+                  {item.label}
                 </a>
               ))}
             </nav>
@@ -194,7 +205,13 @@ function Cart() {
             <Button icon="pi pi-shopping-cart" rounded text severity="secondary" onClick={() => navigate('/cart')}>
               <Badge value={items.length} severity="danger" className="home-cart-badge" />
             </Button>
-            <Avatar image={profileImage} shape="circle" size="large" />
+            <Avatar 
+              image={profileImage} 
+              shape="circle" 
+              size="large" 
+              style={{ cursor: 'pointer' }}
+              onClick={() => navigate('/profile')} 
+            />
           </div>
         </div>
       </header>
@@ -213,7 +230,7 @@ function Cart() {
                 <div className="text-center py-6" style={{ color: '#6c757d' }}>
                   <i className="pi pi-shopping-cart" style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem' }} />
                   <p>Your cart is empty.</p>
-                  <Button label="Browse Vouchers" icon="pi pi-arrow-left" text className="mt-3" onClick={() => navigate('/Home')} />
+                  <Button label="Browse Vouchers" icon="pi pi-arrow-left" text className="mt-3" onClick={() => navigate('/home')} />
                 </div>
               ) : (
                 <div className="flex flex-column gap-3">
@@ -320,7 +337,7 @@ function Cart() {
                 icon="pi pi-arrow-left"
                 text
                 className="w-full"
-                onClick={() => navigate('/Home')}
+                onClick={() => navigate('/home')}
               />
             </div>
           </div>

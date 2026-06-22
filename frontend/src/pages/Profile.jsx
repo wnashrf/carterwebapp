@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -8,9 +8,14 @@ import { Card } from 'primereact/card';
 import { Tag } from 'primereact/tag';
 import { Divider } from 'primereact/divider';
 import { Toast } from 'primereact/toast';
+import { getCart } from '../api/cart';
 import './Home.css';
 
-const navItems = ['Explore', 'Deals', 'Rewards', 'Wallet'];
+const navItems = [
+  { label: 'Explore', path: '/home' },
+  { label: 'Categories', path: '/categories/all' },
+  { label: 'Wallet', path: '/wallet' }
+];
 
 const profileImage =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuCBSuIxUxfHg4wgNs3r-LO4qo6VNboOmg9Kb3aXO51jImuiyOFvXuTrd1wLc7zuGzCYjXZ5uW-DcC-AM0Dx6_HcT74tKyPAwBRGp9jf4ENR6pu1lD2E_6w-CWtUcsf33qMmCjPjGRar-Zs9Ux64NQXcqqYWPA6KLkOYxYtkNHGbhGV1nufUeRWL1bJjpYyc06lh1E3ZH_apHor12onMvLgo1q_GTHEL_AAjC1AMDXJ4yvYmKVbneaw-U35QqqQp0k0tHC7X_odbbPf5';
@@ -25,6 +30,28 @@ const recentActivity = [
 function Profile() {
   const navigate = useNavigate();
   const toast = useRef(null);
+  const [cartCount, setCartCount] = useState(0);
+
+  useEffect(() => {
+  let active = true;
+
+  async function loadCartCount() {
+    try {
+      const data = await getCart();
+      if (active && Array.isArray(data)) {
+        setCartCount(data.length);
+      }
+    } catch (err) {
+      console.error('Failed to load cart count', err);
+    }
+  }
+
+  loadCartCount();
+
+  return () => {
+    active = false;
+  };
+}, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -43,13 +70,23 @@ function Profile() {
       <header className="home-topbar">
         <div className="home-topbar__inner">
           <div className="flex align-items-center gap-4">
-            <span className="home-brand" style={{ cursor: 'pointer' }} onClick={() => navigate('/Home')}>
+            <span className="home-brand" style={{ cursor: 'pointer' }} onClick={() => navigate('/home')}>
               <i className="pi pi-ticket mr-2" />
               Carter Redeem
             </span>
             <nav className="home-nav hidden lg:flex gap-3">
               {navItems.map((item) => (
-                <a key={item} href="/Home" className="home-nav__link">{item}</a>
+                <a 
+                  key={item.label} 
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate(item.path);
+                  }}
+                  className="home-nav__link"
+                >
+                  {item.label}
+                </a>
               ))}
             </nav>
           </div>
@@ -59,13 +96,13 @@ function Profile() {
               <InputText placeholder="Search vouchers..." className="home-search" />
             </span>
             <Button icon="pi pi-shopping-cart" rounded text severity="secondary" onClick={() => navigate('/cart')}>
-              <Badge value="2" severity="danger" className="home-cart-badge" />
+              <Badge value={cartCount} severity="danger" className="home-cart-badge" />
             </Button>
             <Avatar
               image={profileImage}
               shape="circle"
               size="large"
-              style={{ cursor: 'pointer', outline: '2px solid var(--primary-color)', outlineOffset: '2px' }}
+              style={{ cursor: 'pointer', outline: '2px solid var(--primary-color)', outlineOffset: '2px' }} 
             />
           </div>
         </div>
@@ -76,7 +113,7 @@ function Profile() {
         {/* Page title */}
         <div className="flex align-items-center justify-content-between mb-4">
           <div className="flex align-items-center gap-3">
-            <Button icon="pi pi-arrow-left" text onClick={() => navigate('/Home')} />
+            <Button icon="pi pi-arrow-left" text onClick={() => navigate('/home')} />
             <h1 className="text-2xl font-bold m-0">My Profile</h1>
           </div>
           <Button
@@ -123,7 +160,7 @@ function Profile() {
                 iconPos="right"
                 size="small"
                 style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff' }}
-                onClick={() => navigate('/Home')}
+                onClick={() => navigate('/home')}
               />
             </Card>
 
@@ -190,7 +227,7 @@ function Profile() {
                 </div>
               </div>
               <div className="flex justify-content-end gap-2 mt-2">
-                <Button label="Cancel" outlined severity="secondary" onClick={() => navigate('/Home')} />
+                <Button label="Cancel" outlined severity="secondary" onClick={() => navigate('/home')} />
                 <Button label="Save Changes" icon="pi pi-check" onClick={handleSave} />
               </div>
             </Card>

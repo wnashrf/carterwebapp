@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -9,13 +9,13 @@ import { Card } from 'primereact/card';
 import { Toast } from 'primereact/toast';
 import { BreadCrumb } from 'primereact/breadcrumb';
 import './Home.css';
+import { getCart } from '../api/cart';
 import apiClient from '../api/client';
 
 const navItems = [
-  { label: 'Explore', path: '/Home' },
-  { label: 'Deals', path: '/voucher-category' },
-  { label: 'Rewards', path: '#' },
-  { label: 'Wallet', path: '#' }
+  { label: 'Explore', path: '/home' },
+  { label: 'Categories', path: '/categories/all' },
+  { label: 'Wallet', path: '/wallet' }
 ];
 
 const profileImage =
@@ -39,7 +39,28 @@ function VoucherDetail() {
   const location = useLocation();
   const navigate = useNavigate();
   const toast = useRef(null);
+  const [cartCount, setCartCount] = useState(0);
   const voucher = location.state?.voucher;
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadCartCount() {
+      try {
+        const data = await getCart();
+        if (active && Array.isArray(data)) {
+          setCartCount(data.length);
+        }
+      } catch (err) {
+        console.error('Failed to load cart count', err);
+      }
+    }
+    loadCartCount();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   if (!voucher) {
     return (
@@ -47,7 +68,7 @@ function VoucherDetail() {
         <div style={{ textAlign: 'center' }}>
           <i className="pi pi-exclamation-circle" style={{ fontSize: '3rem', color: '#6c757d', display: 'block', marginBottom: '1rem' }} />
           <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>No voucher selected.</p>
-          <Button label="Back to Home" icon="pi pi-arrow-left" onClick={() => navigate('/Home')} />
+          <Button label="Back to Home" icon="pi pi-arrow-left" onClick={() => navigate('/home')} />
         </div>
       </div>
     );
@@ -57,10 +78,10 @@ function VoucherDetail() {
   const categoryIcon = categoryIcons[categoryName] || categoryIcons.General;
 
   const breadcrumbItems = [
-    { label: categoryName, command: () => navigate('/Home') },
+    { label: categoryName, command: () => navigate('/home') },
     { label: voucher.title },
   ];
-  const breadcrumbHome = { icon: 'pi pi-home', command: () => navigate('/Home') };
+  const breadcrumbHome = { icon: 'pi pi-home', command: () => navigate('/home') };
 
   const handleRedeem = () => {
     toast.current.show({
@@ -99,7 +120,7 @@ function VoucherDetail() {
       <header className="home-topbar">
         <div className="home-topbar__inner">
           <div className="flex align-items-center gap-4">
-            <span className="home-brand" style={{ cursor: 'pointer' }} onClick={() => navigate('/Home')}>
+            <span className="home-brand" style={{ cursor: 'pointer' }} onClick={() => navigate('/home')}>
               <i className="pi pi-ticket mr-2" />
               Carter Redeem
             </span>
@@ -127,9 +148,15 @@ function VoucherDetail() {
               <InputText placeholder="Search vouchers..." className="home-search" />
             </span>
             <Button icon="pi pi-shopping-cart" rounded text severity="secondary" onClick={() => navigate('/cart')}>
-              <Badge value="2" severity="danger" className="home-cart-badge" />
+              <Badge value={cartCount} severity="danger" className="home-cart-badge" />
             </Button>
-            <Avatar image={profileImage} shape="circle" size="large" />
+            <Avatar 
+              image={profileImage} 
+              shape="circle" 
+              size="large" 
+              style={{ cursor: 'pointer' }}
+              onClick={() => navigate('/profile')} 
+            />
           </div>
         </div>
       </header>
@@ -262,7 +289,7 @@ function VoucherDetail() {
                 icon="pi pi-arrow-left"
                 text
                 className="w-full"
-                onClick={() => navigate('/Home')}
+                onClick={() => navigate('/home')}
               />
             </div>
           </div>
