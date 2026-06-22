@@ -6,6 +6,7 @@ import { Button } from 'primereact/button';
 import { Divider } from 'primereact/divider';
 import { Message } from 'primereact/message';
 import { classNames } from 'primereact/utils';
+import { loginUser, signupUser } from '../api/auth';
 import './Login.css';
 
 // 1. Defensive check for environment variables to prevent ReferenceErrors
@@ -41,29 +42,12 @@ const Login = () => {
     setLoading(true);
     setError('');
 
-    const endpoint = isLogin ? '/auth/login' : '/auth/signup';
-    const payload = isLogin
-      ? { email: formData.email, password: formData.password }
-      : { email: formData.email, password: formData.password, username: formData.username };
-
     try {
-      // Ensure no double slashes in the URL construction
-      const cleanBase = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE;
-      const url = `${cleanBase}${endpoint}`;
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Authentication failed');
-      }
-
+      let data;
+      
       if (isLogin) {
+        data = await loginUser(formData.email, formData.password);
+        
         if (data.token) {
           localStorage.setItem('token', data.token);
           navigate('/Home'); 
@@ -71,11 +55,12 @@ const Login = () => {
           throw new Error('Login successful, but no token was received.');
         }
       } else {
+        await signupUser(formData.username, formData.email, formData.password);
         alert('Account created! Please sign in.');
         setIsLogin(true);
       }
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.message || err.message || 'Authentication failed');
     } finally {
       setLoading(false);
     }
