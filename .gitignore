@@ -5,6 +5,9 @@ node_modules/
 .env
 .env.*
 
+# Local voucher assets & build uploads
+/voucher/
+
 # Build output
 build/
 dist/
