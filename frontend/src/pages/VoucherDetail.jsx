@@ -1,5 +1,4 @@
 import React, { useRef } from 'react';
-import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -10,6 +9,7 @@ import { Card } from 'primereact/card';
 import { Toast } from 'primereact/toast';
 import { BreadCrumb } from 'primereact/breadcrumb';
 import './Home.css';
+import apiClient from '../api/client';
 
 const navItems = [
   { label: 'Explore', path: '/Home' },
@@ -73,19 +73,11 @@ function VoucherDetail() {
 
   const handleAddToCart = async () => {
   try {
-    // 1. Tell the backend to add this specific voucher to the user's cart database
-    // We assume your backend expects the voucher ID and an initial quantity
-    await axios.post('http://localhost:5000/api/cart', { 
+    await apiClient.post(`/cart`, { 
       voucher: voucher._id, 
       quantity: 1 
-    }, {
-      headers: {
-        // Include your JWT auth token so your auth middleware can decode req.userId!
-        Authorization: `Bearer ${localStorage.getItem('token')}` 
-      }
     });
 
-    // 2. Wait for the database write to successfully finish, THEN change pages
     navigate('/cart');
 
   } catch (error) {
