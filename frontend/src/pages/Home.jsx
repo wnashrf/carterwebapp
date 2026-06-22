@@ -9,13 +9,13 @@ import { Card } from 'primereact/card';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { Message } from 'primereact/message';
 import { getVouchers } from '../api/vouchers';
+import { getCart } from '../api/cart';
 import './Home.css';
 
 const navItems = [
-  { label: 'Explore', path: '/Home' },
-  { label: 'Deals', path: '/categories' },
-  { label: 'Rewards', path: '#' },
-  { label: 'Wallet', path: '#' }
+  { label: 'Explore', path: '/home' },
+  { label: 'Categories', path: '/categories/all' },
+  { label: 'Wallet', path: '/wallet' }
 ];
 
 // Map backend category names to PrimeIcons
@@ -48,6 +48,7 @@ function Home() {
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -55,11 +56,13 @@ function Home() {
     async function loadVouchers() {
       try {
         const data = await getVouchers();
-        if (!active) {
-          return;
-        }
+       if (!active) return;
+       setVouchers(Array.isArray(data) ? data : []);
 
-        setVouchers(Array.isArray(data) ? data : []);
+       const cartData = await getCart();
+       if (active && Array.isArray(cartData)) {
+         setCartCount(cartData.length);
+       }
       } catch (err) {
         if (!active) {
           return;
@@ -114,7 +117,7 @@ function Home() {
       <header className="home-topbar">
         <div className="home-topbar__inner">
           <div className="flex align-items-center gap-4">
-            <span className="home-brand">
+            <span className="home-brand" style={{ cursor: 'pointer' }} onClick={() => navigate('/home')}>
               <i className="pi pi-ticket mr-2" />
               Carter Redeem
             </span>
@@ -150,15 +153,8 @@ function Home() {
               aria-label="Cart"
               onClick={() => navigate('/cart')}
             >
-              <Badge value="2" severity="danger" className="home-cart-badge" />
+              <Badge value={cartCount} severity="danger" className="home-cart-badge" />
             </Button>
-            <Button
-              icon="pi pi-bell"
-              rounded
-              text
-              severity="secondary"
-              aria-label="Notifications"
-            />
             <Avatar
               image={profileImage}
               shape="circle"
@@ -208,9 +204,11 @@ function Home() {
           <div className="home-section__heading">
             <div>
               <h2>Browse Categories</h2>
-              <p>Voucher groups built from your current backend data.</p>
             </div>
-            <Button label="View All" link className="p-0" />
+            <Button label="View All"
+            link
+            className="p-0"
+            onClick={() => navigate('/categories/all')}/>
           </div>
 
           <div className="grid">
@@ -219,7 +217,14 @@ function Home() {
               : [{ name: 'General', icon: categoryIcons.General }]
             ).map((category) => (
               <div className="col-6 md:col-4 lg:col-2" key={category.name}>
-                <div className="home-category">
+                <div 
+                  className="home-category" 
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => {
+                    const URLFriendlyName = category.name.toLowerCase().replace(/ & /g, '_');
+                    navigate(`/categories/${URLFriendlyName}`);
+                  }}
+                >
                   <span className="home-category__icon">
                     <i className={`pi ${category.icon}`} />
                   </span>
@@ -235,7 +240,6 @@ function Home() {
           <div className="home-section__heading">
             <div>
               <h2>Trending Vouchers</h2>
-              <p>Live data from your voucher API.</p>
             </div>
             <Button icon="pi pi-filter" rounded text severity="secondary" />
           </div>

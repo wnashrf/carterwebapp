@@ -15,13 +15,13 @@ import { Dropdown } from 'primereact/dropdown';
 import { Toast } from 'primereact/toast';
 import { getVouchers } from '../api/vouchers';
 import { useParams } from 'react-router-dom';
+import { getCart } from '../api/cart';
 import './Home.css';
 
 const navItems = [
-  { label: 'Explore', path: '/Home' },
-  { label: 'Deals', path: '/categories' },
-  { label: 'Rewards', path: '#' },
-  { label: 'Wallet', path: '#' }
+  { label: 'Explore', path: '/home' },
+  { label: 'Categories', path: '/categories/all' },
+  { label: 'Wallet', path: '/wallet' }
 ];
 const categoryIcons = {
   'Food & Beverage': 'pi-apple',
@@ -51,6 +51,7 @@ function VoucherCategory() {
   const [error, setError] = useState('');
   const [selectedPrices, setSelectedPrices] = useState([]);
   const [selectedBrand, setSelectedBrand] = useState(null);
+  const [cartCount, setCartCount] = useState(0);
   const toast = useRef(null);
   const navigate = useNavigate();
 
@@ -64,13 +65,20 @@ function VoucherCategory() {
   });
 
   const breadcrumbItems = [
-    { label: 'Categories' },
     { 
-      label: categoryId ? categoryId.charAt(0).toUpperCase() + categoryId.slice(1) : 'All Vouchers', 
+      label: 'Categories', 
+      command: () => navigate('/categories/all')
+    },
+    { 
+      label: categoryId ? categoryId.charAt(0).toUpperCase() + categoryId.slice(1).replace('_', ' & ') : 'All Vouchers', 
       className: 'font-bold text-primary' 
     }
   ];
-  const breadcrumbHome = { icon: 'pi pi-home', url: '/' };
+
+  const breadcrumbHome = { 
+    icon: 'pi pi-home', 
+    command: () => navigate('/home')
+  };
 
   const sortOptions = [
     { label: 'Recommended', value: 'rec' },
@@ -79,10 +87,17 @@ function VoucherCategory() {
   ];
 
   useEffect(() => {
+    let active = true;
     async function loadVouchers() {
       try {
         const data = await getVouchers();
-        setVouchers(Array.isArray(data) ? data : []);
+       if (!active) return;
+       setVouchers(Array.isArray(data) ? data : []);
+
+       const cartData = await getCart();
+       if (active && Array.isArray(cartData)) {
+         setCartCount(cartData.length);
+       }
       } catch (err) {
         setError(err.message || 'Failed to load vouchers');
       } finally {
@@ -90,6 +105,7 @@ function VoucherCategory() {
       }
     }
     loadVouchers();
+    return () => { active = false; };
   }, []);
 
   const onPriceChange = (e) => {
@@ -116,7 +132,7 @@ function VoucherCategory() {
       <header className="home-topbar">
         <div className="home-topbar__inner">
           <div className="flex align-items-center gap-4">
-            <span className="home-brand">
+            <span className="home-brand" style={{ cursor: 'pointer' }} onClick={() => navigate('/home')}>
               <i className="pi pi-ticket mr-2" />
               Carter Redeem
             </span>
@@ -147,7 +163,13 @@ function VoucherCategory() {
             <Button icon="pi pi-shopping-cart" rounded text severity="secondary" onClick={() => navigate('/cart')}>
               <Badge value="2" severity="danger" className="home-cart-badge" />
             </Button>
-            <Avatar image={profileImage} shape="circle" size="large" />
+            <Avatar 
+              image={profileImage} 
+              shape="circle" 
+              size="large" 
+              style={{ cursor: 'pointer' }}
+              onClick={() => navigate('/profile')} 
+            />
           </div>
         </div>
       </header>
@@ -169,7 +191,7 @@ function VoucherCategory() {
               <h4 className="font-bold mb-3">Categories</h4>
               <div className="grid g-2">
                 {[
-                  { name: 'All Vouchers', id: 'all', icon: 'pi-th-large', path: '/categories' },
+                  { name: 'All Vouchers', id: 'all', icon: 'pi-th-large', path: '/categories/all' },
                   { name: 'Electronics', id: 'electronics', icon: 'pi-shopping-bag', path: '/categories/electronics' },
                   { name: 'Books', id: 'books', icon: 'pi-book', path: '/categories/books' },
                   { name: 'Home & Garden', id: 'home_garden', icon: 'pi-home', path: '/categories/home_garden' }
@@ -182,8 +204,8 @@ function VoucherCategory() {
                         onClick={() => navigate(cat.path)}
                         className={`flex flex-column align-items-center justify-content-center p-3 border-round-xl border-1 text-center cursor-pointer transition-all transition-duration-150 ${
                           isActive 
-                            ? 'bg-primary-50 border-primary text-primary shadow-1 font-bold' 
-                            : 'bg-white border-200 hover:border-400 hover:shadow-1'
+                            ? 'bg-secondary border-200 text-primary shadow-1 font-bold' 
+                            : 'bg-white border-200 hover:border-400 hover:shadow-1 text-secondary'
                         }`}
                         style={{ minHeight: '85px' }}
                       >
