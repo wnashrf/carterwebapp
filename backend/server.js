@@ -18,7 +18,7 @@ connectDB();
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.get('/vouchers/download/:filename', (req, res) => {
+app.get('/api/vouchers/download/:filename', (req, res) => {
   const filename = req.params.filename;
   const safePattern = /^VOUCHER_[A-Z0-9]{6,8}_\d+\.pdf$/i;
   if (!safePattern.test(filename)) {

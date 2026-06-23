@@ -6,6 +6,7 @@ const auth = require('../middleware/auth');
 router.post('/', auth, c.addToCart);
 router.get('/user', auth, c.getCartForUser);
 router.post('/redeem', auth, redeemController.redeem);
+router.post('/redeem-single', auth, redeemController.redeemSingle);
 router.patch('/:id', auth, c.updateQuantity);
 router.delete('/:id', auth, c.deleteFromCart);
 

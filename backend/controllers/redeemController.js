@@ -2,6 +2,7 @@
 const CartItem = require('../models/CartItem');
 const User = require('../models/User');
 const CartItemHistory = require('../models/CartItemHistory');
+const Voucher = require('../models/Voucher');
 const {generateRedemptionPDF} = require('../utils/pdfGenerator')
 
 exports.redeem = async (req, res) => {
@@ -58,6 +59,66 @@ exports.redeem = async (req, res) => {
         : "Multiple Vouchers",
       fileName: pdfResult.filename
      });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.redeemSingle = async (req, res) => {
+  try {
+    const { voucherId } = req.body;
+    if (!voucherId) {
+      return res.status(400).json({ message: 'Voucher ID is required' });
+    }
+
+    // Fetch the raw voucher document directly
+    const voucher = await Voucher.findById(voucherId).populate('category_id');
+    if (!voucher) {
+      return res.status(404).json({ message: 'Voucher not found' });
+    }
+
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.points < voucher.points) {
+      return res.status(400).json({ message: `Not enough points. You need ${voucher.points} pts.` });
+    }
+
+    // Mimic the items array format expected by your native pdfGenerator engine
+    const mockItem = {
+      voucher: voucher,
+      quantity: 1
+    };
+
+    const redemptionPayload = {
+      userName: user.username || 'Valued Customer',
+      items: [mockItem],
+      totalPoints: voucher.points
+    };
+
+    // Trigger file stream generation
+    const pdfResult = await generateRedemptionPDF(redemptionPayload);
+
+    // Save transaction directly into your existing history tracking log
+    await CartItemHistory.create({
+      user: req.userId,
+      voucher: voucher._id,
+      quantity: 1,
+      timestamp: new Date()
+    });
+
+    // Deduct exact points balance
+    user.points -= voucher.points;
+    await user.save();
+
+    res.status(200).json({
+      message: 'Redeemed successfully',
+      remaining: user.points,
+      redemptionCode: pdfResult.generatedCodes?.[0] || "VOUCHER-ERR",
+      fileName: pdfResult.filename
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
