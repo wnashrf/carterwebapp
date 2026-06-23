@@ -8,7 +8,9 @@ import { Card } from 'primereact/card';
 import { Tag } from 'primereact/tag';
 import { Divider } from 'primereact/divider';
 import { Toast } from 'primereact/toast';
+import { ProgressSpinner } from 'primereact/progressspinner';
 import { getCart } from '../api/cart';
+import { fetchProfileData, modifyProfileData } from '../api/auth';
 import './Home.css';
 
 const navItems = [
@@ -31,36 +33,76 @@ function Profile() {
   const navigate = useNavigate();
   const toast = useRef(null);
   const [cartCount, setCartCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [user, setUser] = useState(null);
+  const [stats, setStats] = useState({ vouchersRedeemed: '0', totalSaved: 'RM 0', memberSince: '---' });
+  const [activities, setActivities] = useState([]);
+  const [formData, setFormData] = useState({ fullName: '', email: '', phone: '', username: '' });
 
   useEffect(() => {
-  let active = true;
+    let active = true;
 
-  async function loadCartCount() {
-    try {
-      const data = await getCart();
-      if (active && Array.isArray(data)) {
-        setCartCount(data.length);
+    async function initProfileView() {
+      try {
+        const [cartRes, profileRes] = await Promise.all([getCart(), fetchProfileData()]);
+        if (!active) return;
+
+        if (Array.isArray(cartRes)) setCartCount(cartRes.length);
+
+        const profilePayload = profileRes.data || profileRes;
+        if (profilePayload?.user) {
+          setUser(profilePayload.user);
+          setStats(profilePayload.stats);
+          setActivities(profilePayload.activity);
+          setFormData({
+            fullName: profilePayload.user.fullName || '',
+            email: profilePayload.user.email || '',
+            phone: profilePayload.user.phone || '',
+            username: profilePayload.user.username || ''
+          });
+        }
+      } catch (err) {
+        console.error('Initialization breakdown error:', err);
+      } finally {
+        if (active) setLoading(false);
       }
-    } catch (err) {
-      console.error('Failed to load cart count', err);
     }
-  }
+    initProfileView();
+    return () => { active = false; };
+  }, []);
 
-  loadCartCount();
-
-  return () => {
-    active = false;
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
-}, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/');
   };
 
-  const handleSave = () => {
-    toast.current.show({ severity: 'success', summary: 'Profile Updated', detail: 'Your changes have been saved.', life: 3000 });
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await modifyProfileData(formData);
+      toast.current.show({ severity: 'success', summary: 'Profile Updated', detail: 'Your alterations have been saved successfully.', life: 3000 });
+      
+      // Update local baseline username text elements dynamically
+      setUser(prev => ({ ...prev, ...formData }));
+    } catch (err) {
+      toast.current.show({ severity: 'error', summary: 'Update Failed', detail: err.response?.data?.message || 'Error occurred.', life: 3000 });
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
+        <ProgressSpinner />
+      </div>
+    );
+  }
 
   return (
     <div className="home-shell">
@@ -129,55 +171,34 @@ function Profile() {
 
           {/* Left column: avatar + stats */}
           <div className="col-12 lg:col-4">
-
-            {/* Avatar card */}
             <Card className="shadow-1 border-none mb-4 text-center">
               <div style={{ position: 'relative', display: 'inline-block', marginBottom: '1rem' }}>
                 <Avatar image={profileImage} shape="circle" size="xlarge" style={{ width: '6rem', height: '6rem' }} />
-                <Button
-                  icon="pi pi-camera"
-                  rounded
-                  size="small"
-                  style={{ position: 'absolute', bottom: 0, right: 0, width: '2rem', height: '2rem' }}
-                />
+                <Button icon="pi pi-camera" rounded size="small" style={{ position: 'absolute', bottom: 0, right: 0, width: '2rem', height: '2rem' }} />
               </div>
-              <h2 className="text-xl font-bold mb-1">John Doe</h2>
-              <p className="text-sm mb-3" style={{ color: '#6c757d' }}>john.doe@example.com</p>
-              <Tag value="Premium Member" severity="warning" rounded />
+              <h2 className="text-xl font-bold mb-1">{user?.fullName || user?.username || 'Valued User'}</h2>
+              <p className="text-sm mb-3" style={{ color: '#6c757d' }}>{user?.email}</p>
+              <Tag value={user?.role === 'admin' ? 'Administrator' : 'Premium Member'} severity="warning" rounded />
             </Card>
 
-            {/* Points card */}
             <Card className="shadow-1 border-none mb-4" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #0f6b45 100%)', color: '#fff' }}>
               <div className="flex align-items-center gap-2 mb-2">
                 <i className="pi pi-star-fill" style={{ color: '#fbbf24' }} />
-                <span className="font-semibold text-sm" style={{ opacity: 0.85 }}>Available Points</span>
+                <span className="font-semibold text-sm" style={{ opacity: 0.85 }}>Available Balance</span>
               </div>
-              <p className="font-bold m-0" style={{ fontSize: '2.25rem', lineHeight: 1 }}>12,500</p>
-              <p className="text-sm mt-1 mb-4" style={{ opacity: 0.7 }}>≈ RM 125.00 value</p>
-              <Button
-                label="Redeem Points"
-                icon="pi pi-arrow-right"
-                iconPos="right"
-                size="small"
-                style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff' }}
-                onClick={() => navigate('/home')}
-              />
+              <p className="font-bold mb-3" style={{ fontSize: '2.25rem', lineHeight: 1 }}>{user?.points?.toLocaleString() || 0}</p>
+              <Button label="Redeem Points" icon="pi pi-arrow-right" iconPos="right" size="small" style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff' }} onClick={() => navigate('/home')} />
             </Card>
 
-            {/* Stats */}
-            <Card className="shadow-1 border-none">
-              <h3 className="font-bold mb-3">Activity Stats</h3>
+            <Card className="shadow-1 border-none" bodyClassName="p-3">
+              <h3 className="font-bold mb-3 mt-0" style={{ fontSize: '1.2rem' }}>Activity Stats</h3>
               <div className="flex flex-column gap-3">
                 {[
-                  { label: 'Vouchers Redeemed', value: '14', icon: 'pi-ticket', color: '#8b5cf6' },
-                  { label: 'Total Saved', value: 'RM 340', icon: 'pi-wallet', color: '#22c55e' },
-                  { label: 'Member Since', value: 'Jan 2026', icon: 'pi-calendar', color: '#3b82f6' },
+                  { label: 'Vouchers Redeemed', value: stats.vouchersRedeemed, icon: 'pi-ticket', color: '#8b5cf6' },
+                  { label: 'Member Since', value: stats.memberSince, icon: 'pi-calendar', color: '#3b82f6' },
                 ].map(stat => (
                   <div key={stat.label} className="flex align-items-center gap-3">
-                    <div
-                      className="flex align-items-center justify-content-center border-circle"
-                      style={{ width: '2.5rem', height: '2.5rem', background: `${stat.color}20`, flexShrink: 0 }}
-                    >
+                    <div className="flex align-items-center justify-content-center border-circle" style={{ width: '2.5rem', height: '2.5rem', background: `${stat.color}20`, flexShrink: 0 }}>
                       <i className={`pi ${stat.icon}`} style={{ color: stat.color }} />
                     </div>
                     <div style={{ flex: 1 }}>
@@ -192,103 +213,81 @@ function Profile() {
 
           {/* Right column: edit form + activity */}
           <div className="col-12 lg:col-8">
-
-            {/* Edit profile form */}
             <Card className="shadow-1 border-none mb-4">
               <h2 className="text-xl font-bold mb-4">Personal Information</h2>
               <div className="grid">
                 <div className="col-12 md:col-6 field">
                   <label className="font-semibold text-sm block mb-2" style={{ color: '#6c757d' }}>Full Name</label>
                   <span className="p-input-icon-left w-full">
-                    <i className="pi pi-user" />
-                    <InputText defaultValue="John Doe" className="w-full" />
+                    <i className="pi pi-user pl-2" style={{ left: '0.75rem', paddingRight: '0.5rem' }} />
+                    <InputText name="fullName" value={formData.fullName} onChange={handleInputChange} className="w-full pl-5" />
                   </span>
                 </div>
                 <div className="col-12 md:col-6 field">
                   <label className="font-semibold text-sm block mb-2" style={{ color: '#6c757d' }}>Email Address</label>
                   <span className="p-input-icon-left w-full">
-                    <i className="pi pi-envelope" />
-                    <InputText defaultValue="john.doe@example.com" className="w-full" />
+                    <i className="pi pi-envelope pl-2" style={{ left: '0.75rem', paddingRight: '0.5rem' }} />
+                    <InputText name="email" value={formData.email} onChange={handleInputChange} className="w-full pl-5" />
                   </span>
                 </div>
                 <div className="col-12 md:col-6 field">
                   <label className="font-semibold text-sm block mb-2" style={{ color: '#6c757d' }}>Phone Number</label>
                   <span className="p-input-icon-left w-full">
-                    <i className="pi pi-phone" />
-                    <InputText defaultValue="+60 12-345 6789" className="w-full" />
+                    <i className="pi pi-phone pl-2" style={{ left: '0.75rem', paddingRight: '0.5rem' }} />
+                    <InputText name="phone" value={formData.phone} onChange={handleInputChange} className="w-full pl-5" />
                   </span>
                 </div>
                 <div className="col-12 md:col-6 field">
-                  <label className="font-semibold text-sm block mb-2" style={{ color: '#6c757d' }}>Username</label>
+                  <label className="font-semibold text-sm block mb-2" style={{ color: '#6c757d' }}>Username Handle</label>
                   <span className="p-input-icon-left w-full">
-                    <i className="pi pi-at" />
-                    <InputText defaultValue="johndoe" className="w-full" />
+                    <i className="pi pi-at pl-2" style={{ left: '0.75rem', paddingRight: '0.5rem' }} />
+                    <InputText name="username" value={formData.username} onChange={handleInputChange} className="w-full pl-5" />
                   </span>
                 </div>
-              </div>
+              </div>      
               <div className="flex justify-content-end gap-2 mt-2">
                 <Button label="Cancel" outlined severity="secondary" onClick={() => navigate('/home')} />
-                <Button label="Save Changes" icon="pi pi-check" onClick={handleSave} />
+                <Button label="Save Changes" icon="pi pi-check" loading={saving} onClick={handleSave} />
               </div>
             </Card>
 
-            {/* Recent activity */}
+            {/* Dynamic Activity List View */}
             <Card className="shadow-1 border-none">
               <h2 className="text-xl font-bold mb-4">Recent Activity</h2>
-              <div className="flex flex-column">
-                {recentActivity.map((item, idx) => (
-                  <div key={item.id}>
-                    <div className="flex align-items-center gap-3 py-3">
-                      <div
-                        className="flex align-items-center justify-content-center border-circle"
-                        style={{ width: '2.75rem', height: '2.75rem', background: `${item.color}20`, flexShrink: 0 }}
-                      >
-                        <i className={`pi ${item.icon}`} style={{ color: item.color }} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <p className="font-semibold m-0 text-sm">{item.label}</p>
-                        <p className="text-xs mt-1 m-0" style={{ color: '#6c757d' }}>{item.date}</p>
-                      </div>
-                      {item.pts && (
-                        <span
-                          className="font-bold text-sm"
-                          style={{ color: item.pts.startsWith('-') ? '#dc2626' : '#16a34a' }}
-                        >
-                          {item.pts}
-                        </span>
-                      )}
+              <div 
+                style={{ 
+                  height: '255px',
+                  overflowY: 'auto',
+                  paddingRight: '0.5rem'
+                }}
+              >
+                <div className="flex flex-column">
+                  {activities.length === 0 ? (
+                    <div className="text-center py-6 text-sm" style={{ color: '#6c757d' }}>
+                      No historical items logged yet.
                     </div>
-                    {idx < recentActivity.length - 1 && <Divider className="my-0" />}
-                  </div>
-                ))}
-              </div>
-
-              <div className="text-center mt-3">
-                <Button label="View All Activity" text icon="pi pi-history" />
-              </div>
-            </Card>
-
-            {/* Danger zone */}
-            <Card className="shadow-1 border-none mt-4" style={{ border: '1px solid #fca5a5 !important' }}>
-              <h3 className="font-bold mb-1" style={{ color: '#dc2626' }}>
-                <i className="pi pi-exclamation-triangle mr-2" />
-                Account Actions
-              </h3>
-              <p className="text-sm mb-3" style={{ color: '#6c757d' }}>These actions affect your account session or data.</p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  label="Logout"
-                  icon="pi pi-sign-out"
-                  severity="danger"
-                  outlined
-                  onClick={handleLogout}
-                />
-                <Button
-                  label="Change Password"
-                  icon="pi pi-lock"
-                  severity="secondary"
-                  outlined
-                />
+                  ) : (
+                    activities.map((item, idx) => (
+                      <div key={item.id}>
+                        <div className="flex align-items-center gap-3 py-3">
+                          <div className="flex align-items-center justify-content-center border-circle" style={{ width: '2.75rem', height: '2.75rem', background: `${item.color}20`, flexShrink: 0 }}>
+                            <i className={`pi ${item.icon}`} style={{ color: item.color }} />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <p className="font-semibold m-0 text-sm">{item.label}</p>
+                            <p className="text-xs mt-1 m-0" style={{ color: '#6c757d' }}>{item.date}</p>
+                          </div>
+                          {item.pts && (
+                            <span className="font-bold text-sm" style={{ color: item.pts.startsWith('-') ? '#dc2626' : '#16a34a' }}>
+                              {item.pts}
+                            </span>
+                          )}
+                        </div>
+                        {idx < activities.length - 1 && <Divider className="my-0" />}
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </Card>
           </div>

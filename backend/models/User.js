@@ -9,6 +9,8 @@ const userSchema = new mongoose.Schema({
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
     is_active: { type: Boolean, default: true },
     points: { type: Number, default: 0 },
+    fullName: { type: String, default: '' },
+    phone: { type: String, default: '' }
 }, { timestamps: true });
 
 // Pre-save hook to hash password before saving
