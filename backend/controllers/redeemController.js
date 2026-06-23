@@ -3,6 +3,7 @@ const CartItem = require('../models/CartItem');
 const User = require('../models/User');
 const CartItemHistory = require('../models/CartItemHistory');
 const Voucher = require('../models/Voucher');
+const RedeemedVoucher = require('../models/RedeemedVoucher');
 const {generateRedemptionPDF} = require('../utils/pdfGenerator')
 
 exports.redeem = async (req, res) => {
@@ -35,12 +36,33 @@ exports.redeem = async (req, res) => {
     const pdfResult = await generateRedemptionPDF(redemptionPayload);
  
     const now = new Date();
+
     await CartItemHistory.insertMany(items.map(i => ({
       user: i.user,
       voucher: i.voucher._id,
       quantity: i.quantity,
       timestamp: now
     })));
+
+    const walletInserts = [];
+    let codeIndex = 0;
+    
+    for (const item of items) {
+      for (let q = 0; q < item.quantity; q++) {
+        // Fall back to a structural fallback if multiple code indices aren't present
+        const code = pdfResult.generatedCodes?.[codeIndex] || `V-${~~(Math.random()*100000)}`;
+        
+        walletInserts.push({
+          user: req.userId,
+          voucher: item.voucher._id,
+          uniqueCode: code,
+          isUsed: false,
+          redeemedAt: now
+        });
+        codeIndex++;
+      }
+    }
+    await RedeemedVoucher.insertMany(walletInserts);
 
     // Process database mathematical reductions
     user.points -= total; 
@@ -100,13 +122,23 @@ exports.redeemSingle = async (req, res) => {
 
     // Trigger file stream generation
     const pdfResult = await generateRedemptionPDF(redemptionPayload);
+    const now = new Date();
 
     // Save transaction directly into your existing history tracking log
     await CartItemHistory.create({
       user: req.userId,
       voucher: voucher._id,
       quantity: 1,
-      timestamp: new Date()
+      timestamp: now
+    });
+
+    const finalCode = pdfResult.generatedCodes?.[0] || `V-${~~(Math.random()*100000)}`;
+    await RedeemedVoucher.create({
+      user: req.userId,
+      voucher: voucher._id,
+      uniqueCode: finalCode,
+      isUsed: false,
+      redeemedAt: now
     });
 
     // Deduct exact points balance
