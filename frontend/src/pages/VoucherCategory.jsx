@@ -16,6 +16,7 @@ import { Toast } from 'primereact/toast';
 import { Dialog } from 'primereact/dialog';
 import { getVouchers } from '../api/vouchers';
 import { getCart, redeemSingleVoucher } from '../api/cart';
+import { fetchCategories } from '../api/categories';
 import './Home.css';
 
 const downloadPdfFromBase64 = (base64String, fileName) => {
@@ -52,7 +53,8 @@ const categoryIcons = {
   Travel: 'pi-send',
   Health: 'pi-heart',
   Entertainment: 'pi-video',
-  Lifestyle: 'pi-star',
+  Electronics: 'pi-desktop',
+  'Home & Garden': 'pi-home',
   General: 'pi-gift'
 };
 
@@ -72,6 +74,8 @@ function VoucherCategory() {
   const navigate = useNavigate();
   const toast = useRef(null);
   const [vouchers, setVouchers] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedPrices, setSelectedPrices] = useState([]);
@@ -89,12 +93,27 @@ function VoucherCategory() {
 
   const filteredVouchers = vouchers.filter(voucher => {
     if (!categoryId || categoryId === 'all') return true; 
-    const currentVoucherCategory = (voucher.category_id?.name || 'General').toLowerCase().trim();
-    if (categoryId === 'home_garden') {
-      return currentVoucherCategory === 'home & garden';
+    
+    const currentVoucherCategoryName = (voucher.category_id?.name || 'General').toLowerCase().trim();
+    const currentVoucherCategoryId = (voucher.category_id?._id || '').toString();
+    const normalizedParam = categoryId.toLowerCase().trim();
+
+    if (normalizedParam === 'home_garden' && currentVoucherCategoryName === 'home & garden') {
+      return true;
     }
-    return currentVoucherCategory === categoryId.toLowerCase().trim();
+    
+    return currentVoucherCategoryName === normalizedParam || currentVoucherCategoryId === categoryId;
   });
+
+  const displayTitle = () => {
+    if (!categoryId || categoryId === 'all') return 'All Vouchers';
+    if (categoryId === 'home_garden') return 'Home & Garden';
+    
+    const activeCat = categories.find(c => c._id === categoryId);
+    if (activeCat) return activeCat.name;
+
+    return categoryId.charAt(0).toUpperCase() + categoryId.slice(1).replace('_', ' & ');
+  };
 
   const breadcrumbItems = [
     { 
@@ -102,7 +121,7 @@ function VoucherCategory() {
       command: () => navigate('/categories/all')
     },
     { 
-      label: categoryId ? categoryId.charAt(0).toUpperCase() + categoryId.slice(1).replace('_', ' & ') : 'All Vouchers', 
+      label: displayTitle(), 
       className: 'font-bold text-primary' 
     }
   ];
@@ -120,23 +139,26 @@ function VoucherCategory() {
 
   useEffect(() => {
     let active = true;
-    async function loadVouchers() {
+    async function loadInitialData() {
       try {
-        const data = await getVouchers();
-       if (!active) return;
-       setVouchers(Array.isArray(data) ? data : []);
+        const [voucherData, cartData, categoryData] = await Promise.all([
+          getVouchers(),
+          getCart(),
+          fetchCategories()
+        ]);
 
-       const cartData = await getCart();
-       if (active && Array.isArray(cartData)) {
-         setCartCount(cartData.length);
-       }
+        if (!active) return;
+        
+        setVouchers(Array.isArray(voucherData) ? voucherData : []);
+        if (Array.isArray(cartData)) setCartCount(cartData.length);
+        setCategories(Array.isArray(categoryData) ? categoryData : categoryData.data || []);
       } catch (err) {
-        setError(err.message || 'Failed to load vouchers');
+        setError(err.message || 'Failed to sync screen parameters');
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
-    loadVouchers();
+    loadInitialData();
     return () => { active = false; };
   }, []);
 
@@ -169,9 +191,8 @@ function VoucherCategory() {
         setPdfFilename(responseData.fileName);
         
         if (responseData.pdfFile) {
-          setSavedPdfFile(responseData.pdfFile); // 🔌 Enables the re-download button
+          setSavedPdfFile(responseData.pdfFile);
           
-          // 🔥 AUTOMATIC IN-MEMORY BACKGROUND DOWNLOAD:
           downloadPdfFromBase64(responseData.pdfFile, responseData.fileName || 'voucher.pdf');
         }
       } else {
@@ -211,6 +232,8 @@ function VoucherCategory() {
       <Button label="Close" text className="w-full" onClick={() => setResultVisible(false)} />
     </div>
   );
+
+  const visibleCategories = isExpanded ? categories : categories.slice(0, 3);
 
   return (
     <div className="home-shell">
@@ -278,18 +301,33 @@ function VoucherCategory() {
             <div className="mb-5">
               <h4 className="font-bold mb-3">Categories</h4>
               <div className="grid g-2">
-                {[
-                  { name: 'All Vouchers', id: 'all', icon: 'pi-th-large', path: '/categories/all' },
-                  { name: 'Electronics', id: 'electronics', icon: 'pi-shopping-bag', path: '/categories/electronics' },
-                  { name: 'Books', id: 'books', icon: 'pi-book', path: '/categories/books' },
-                  { name: 'Home & Garden', id: 'home_garden', icon: 'pi-home', path: '/categories/home_garden' }
-                ].map(cat => {
-                  const isActive = (cat.id === 'all' && !categoryId) || categoryId === cat.id;
+                
+                {/* Permanent "All Vouchers" Baseline Option */}
+                <div className="col-6 mb-2">
+                  <div 
+                    onClick={() => navigate('/categories/all')}
+                    className={`flex flex-column align-items-center justify-content-center p-3 border-round-xl border-1 text-center cursor-pointer transition-all transition-duration-150 ${
+                      (!categoryId || categoryId === 'all')
+                        ? 'bg-secondary border-200 text-primary shadow-1 font-bold' 
+                        : 'bg-white border-200 hover:border-400 hover:shadow-1 text-secondary'
+                    }`}
+                    style={{ minHeight: '85px' }}
+                  >
+                    <i className={`pi pi-th-large text-xl mb-2 pointer-events-none ${(!categoryId || categoryId === 'all') ? 'text-primary' : 'text-secondary'}`} />
+                    <span className="text-xs font-semibold line-height-2 pointer-events-none">All Vouchers</span>
+                  </div>
+                </div>
+
+                {/* Live Database Driven Category Options mapping loop */}
+                {visibleCategories.map(cat => {
+                  // Keep your parameter mapping matching your backend database format
+                  const categoryUrlParam = cat.name.toLowerCase() === 'home & garden' ? 'home_garden' : cat._id;
+                  const isActive = categoryId === categoryUrlParam || categoryId === cat._id;
 
                   return (
-                    <div key={cat.id} className="col-6 mb-2">
+                    <div key={cat._id} className="col-6 mb-2">
                       <div 
-                        onClick={() => navigate(cat.path)}
+                        onClick={() => navigate(`/categories/${categoryUrlParam}`)}
                         className={`flex flex-column align-items-center justify-content-center p-3 border-round-xl border-1 text-center cursor-pointer transition-all transition-duration-150 ${
                           isActive 
                             ? 'bg-secondary border-200 text-primary shadow-1 font-bold' 
@@ -297,14 +335,26 @@ function VoucherCategory() {
                         }`}
                         style={{ minHeight: '85px' }}
                       >
-                        {/* Added pointer-events-none to safeguard nested clicks */}
-                        <i className={`pi ${cat.icon} text-xl mb-2 pointer-events-none ${isActive ? 'text-primary' : 'text-secondary'}`} />
+                        <i className={`pi ${categoryIcons[cat.name] || categoryIcons.General} text-xl mb-2 pointer-events-none ${isActive ? 'text-primary' : 'text-secondary'}`} />
                         <span className="text-xs font-semibold line-height-2 pointer-events-none">{cat.name}</span>
                       </div>
                     </div>
                   );
                 })}
               </div>
+
+              {/* Dynamic "View All" Expansion Controller Toggle Trigger */}
+              {categories.length > 3 && (
+                <div className="text-center mt-2">
+                  <Button 
+                    label={isExpanded ? "Show Less" : `View All (+${categories.length - 3})`} 
+                    link 
+                    className="p-0 text-xs font-semibold shadow-none" 
+                    style={{ color: 'var(--primary-color)' }}
+                    onClick={() => setIsExpanded(!isExpanded)} 
+                  />
+                </div>
+              )}
             </div>
 
             <div className="mb-5">
