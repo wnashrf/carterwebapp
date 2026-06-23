@@ -13,6 +13,28 @@ import './Home.css';
 import { getCart, redeemSingleVoucher } from '../api/cart';
 import apiClient from '../api/client';
 
+const downloadPdfFromBase64 = (base64String, fileName) => {
+  try {
+    const byteCharacters = atob(base64String);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'application/pdf' });
+    const blobUrl = URL.createObjectURL(blob);
+    const downloadLink = document.createElement("a");
+    downloadLink.href = blobUrl;
+    downloadLink.download = fileName || 'voucher.pdf';
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    console.error("Blob download conversion breakdown:", error);
+  }
+};
+
 const navItems = [
   { label: 'Explore', path: '/home' },
   { label: 'Categories', path: '/categories/all' },
@@ -47,6 +69,7 @@ function VoucherDetail() {
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
+  const [savedPdfFile, setSavedPdfFile] = useState(null);
   const voucher = location.state?.voucher;
 
   useEffect(() => {
@@ -93,12 +116,19 @@ function VoucherDetail() {
   const handleDirectRedeem = async () => {
     setProcessing(true);
     try {
-      const data = await redeemSingleVoucher(voucher._id);
+      const response = await redeemSingleVoucher(voucher._id);
       setProcessing(false);
 
-      if (data && data.redemptionCode) {
-        setRedemptionCode(data.redemptionCode);
-        setPdfFilename(data.fileName);
+      const responseData = response?.data?.data || response?.data || response;
+
+      if (responseData && responseData.redemptionCode) {
+        setRedemptionCode(responseData.redemptionCode);
+        setPdfFilename(responseData.fileName);
+        
+        if (responseData.pdfFile) {
+          setSavedPdfFile(responseData.pdfFile);         
+          downloadPdfFromBase64(responseData.pdfFile, responseData.fileName || 'voucher.pdf');
+        }
       } else {
         setRedemptionCode('UNKNOWN-ERR');
         setPdfFilename('');
@@ -133,32 +163,27 @@ function VoucherDetail() {
   };
 
   const successDialogFooter = (
-    <div className="flex flex-column gap-2 w-full">
-      <Button
-        label="Download PDF Voucher"
-        icon="pi pi-download"
-        className="w-full"
-        onClick={() => {
-          if (pdfFilename) {
-            const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
-            const link = document.createElement('a');
-            link.href = `${serverUrl}/api/vouchers/download/${pdfFilename}`;
-            link.setAttribute('download', pdfFilename);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          }
-        }}
-      />
-      <Button
-        label="Back to Home"
-        icon="pi pi-home"
-        outlined
-        className="w-full"
-        onClick={() => { setDialogVisible(false); navigate('/home'); }}
-      />
-    </div>
-  );
+  <div className="flex flex-column gap-2 w-full">
+    <Button
+      label="Download Voucher PDF Again" 
+      icon="pi pi-download"
+      className="w-full"
+      disabled={!savedPdfFile}
+      onClick={() => {
+        if (savedPdfFile) {
+          downloadPdfFromBase64(savedPdfFile, pdfFilename || 'voucher.pdf');
+        }
+      }}
+    />
+    <Button
+      label="Back to Home"
+      icon="pi pi-home"
+      outlined
+      className="w-full"
+      onClick={() => { setDialogVisible(false); navigate('/home'); }}
+    />
+  </div>
+);
 
   const failureDialogFooter = (
     <div className="flex flex-column gap-2 w-full">

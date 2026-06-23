@@ -20,6 +20,36 @@ const navItems = [
 const profileImage =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuCBSuIxUxfHg4wgNs3r-LO4qo6VNboOmg9Kb3aXO51jImuiyOFvXuTrd1wLc7zuGzCYjXZ5uW-DcC-AM0Dx6_HcT74tKyPAwBRGp9jf4ENR6pu1lD2E_6w-CWtUcsf33qMmCjPjGRar-Zs9Ux64NQXcqqYWPA6KLkOYxYtkNHGbhGV1nufUeRWL1bJjpYyc06lh1E3ZH_apHor12onMvLgo1q_GTHEL_AAjC1AMDXJ4yvYmKVbneaw-U35QqqQp0k0tHC7X_odbbPf5';
 
+const downloadPdfFromBase64 = (base64String, fileName) => {
+  try {
+    // Convert base64 string back to binary raw data bytes
+    const byteCharacters = atob(base64String);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    
+    // Package bytes into a secure application/pdf browser file stream blob
+    const blob = new Blob([byteArray], { type: 'application/pdf' });
+    
+    // Create an internal local download instance link
+    const blobUrl = URL.createObjectURL(blob);
+    const downloadLink = document.createElement("a");
+    downloadLink.href = blobUrl;
+    downloadLink.download = fileName || 'voucher.pdf';
+    
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    
+    // Clean up memory allocations right after download trigger completion
+    document.body.removeChild(downloadLink);
+    URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    console.error("Blob download conversion breakdown:", error);
+  }
+};
+
 function Cart() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -30,6 +60,7 @@ function Cart() {
   const [promoCode, setPromoCode] = useState('');
   const [redemptionCode, setRedemptionCode] = useState('');
   const [pdfFilename, setPdfFilename] = useState('');
+  const [savedPdfFile, setSavedPdfFile] = useState(null);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -105,12 +136,19 @@ function Cart() {
       setProcessing(false);
 
       const data = response?.data || response;
-
       console.log("Frontend received parsed data object:", data);
+
+      const responseData = response?.data?.data || response?.data || response;
+      
       // Ensure a valid redemption code is always available for download attempt
-      if (data && data.redemptionCode){
-        setRedemptionCode(data.redemptionCode);
-        setPdfFilename(data.fileName);
+      if (responseData && responseData.redemptionCode) {
+        setRedemptionCode(responseData.redemptionCode);
+        setPdfFilename(responseData.fileName);
+        
+        if (responseData.pdfFile) {
+          setSavedPdfFile(responseData.pdfFile); // 🔌 This will enable the button!
+          downloadPdfFromBase64(responseData.pdfFile, responseData.fileName || 'voucher.pdf');
+        }
       } else {
         setRedemptionCode('UNKNOWN-ERR');
         setPdfFilename('');
@@ -131,22 +169,16 @@ function Cart() {
   const successDialogFooter = (
     <div className="flex flex-column gap-2 w-full">
       <Button
-        label="Download PDF Voucher"
+        label="Download Voucher PDF Again" // 📝 Contextually correct text updates
         icon="pi pi-download"
         className="w-full"
+        disabled={!savedPdfFile}
         onClick={() => {
-          if (pdfFilename) {
-            const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
-            
-            const link = document.createElement('a');
-            link.href = `${serverUrl}/api/vouchers/download/${pdfFilename}`; 
-            link.setAttribute('download', pdfFilename);
-            
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+          if (savedPdfFile) {
+            downloadPdfFromBase64(savedPdfFile, pdfFilename || 'voucher.pdf');
           }
-        }} />
+        }} 
+      />
       <Button
         label="Back to Home"
         icon="pi pi-home"
@@ -364,7 +396,7 @@ function Cart() {
             <h2 className="text-2xl font-bold mb-2">Redemption Successful!</h2>
             <p style={{ color: '#6c757d', lineHeight: 1.6 }}>
               Your voucher code <strong className="font-mono">{redemptionCode}</strong> is ready for use.
-              A confirmation email has been sent to you.
+              Click the button if the download have not started.
             </p>
           </>
         ) : (
