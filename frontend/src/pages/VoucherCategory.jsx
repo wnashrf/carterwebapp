@@ -10,7 +10,6 @@ import { ProgressSpinner } from 'primereact/progressspinner';
 import { Message } from 'primereact/message';
 import { BreadCrumb } from 'primereact/breadcrumb';
 import { Checkbox } from 'primereact/checkbox';
-import { RadioButton } from 'primereact/radiobutton';
 import { Dropdown } from 'primereact/dropdown';
 import { Toast } from 'primereact/toast';
 import { Dialog } from 'primereact/dialog';
@@ -58,8 +57,7 @@ const categoryIcons = {
   General: 'pi-gift'
 };
 
-const profileImage =
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuCBSuIxUxfHg4wgNs3r-LO4qo6VNboOmg9Kb3aXO51jImuiyOFvXuTrd1wLc7zuGzCYjXZ5uW-DcC-AM0Dx6_HcT74tKyPAwBRGp9jf4ENR6pu1lD2E_6w-CWtUcsf33qMmCjPjGRar-Zs9Ux64NQXcqqYWPA6KLkOYxYtkNHGbhGV1nufUeRWL1bJjpYyc06lh1E3ZH_apHor12onMvLgo1q_GTHEL_AAjC1AMDXJ4yvYmKVbneaw-U35QqqQp0k0tHC7X_odbbPf5';
+const profileImage = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCBSuIxUxfHg4wgNs3r-LO4qo6VNboOmg9Kb3aXO51jImuiyOFvXuTrd1wLc7zuGzCYjXZ5uW-DcC-AM0Dx6_HcT74tKyPAwBRGp9jf4ENR6pu1lD2E_6w-CWtUcsf33qMmCjPjGRar-Zs9Ux64NQXcqqYWPA6KLkOYxYtkNHGbhGV1nufUeRWL1bJjpYyc06lh1E3ZH_apHor12onMvLgo1q_GTHEL_AAjC1AMDXJ4yvYmKVbneaw-U35QqqQp0k0tHC7X_odbbPf5';
 
 function formatCategoryName(voucher) {
   return voucher.category_id?.name || 'General';
@@ -73,13 +71,18 @@ function VoucherCategory() {
   const { categoryId } = useParams();
   const navigate = useNavigate();
   const toast = useRef(null);
+
   const [vouchers, setVouchers] = useState([]);
   const [categories, setCategories] = useState([]);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPrices, setSelectedPrices] = useState([]);
+  const [sortBy, setSortBy] = useState('rec');
+  const [viewMode, setViewMode] = useState('grid');
+  
   const [isExpanded, setIsExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedPrices, setSelectedPrices] = useState([]);
-  const [selectedBrand, setSelectedBrand] = useState(null);
   const [cartCount, setCartCount] = useState(0);
   const [pendingVoucher, setPendingVoucher] = useState(null); 
   const [confirmVisible, setConfirmVisible] = useState(false);
@@ -91,19 +94,49 @@ function VoucherCategory() {
   const [txError, setTxError] = useState('');
   const [savedPdfFile, setSavedPdfFile] = useState(null);
 
-  const filteredVouchers = vouchers.filter(voucher => {
-    if (!categoryId || categoryId === 'all') return true; 
-    
-    const currentVoucherCategoryName = (voucher.category_id?.name || 'General').toLowerCase().trim();
-    const currentVoucherCategoryId = (voucher.category_id?._id || '').toString();
-    const normalizedParam = categoryId.toLowerCase().trim();
+  const filteredAndSortedVouchers = vouchers
+    .filter(voucher => {
+      if (categoryId && categoryId !== 'all') {
+        const currentVoucherCategoryName = (voucher.category_id?.name || 'General').toLowerCase().trim();
+        const currentVoucherCategoryId = (voucher.category_id?._id || '').toString();
+        const normalizedParam = categoryId.toLowerCase().trim();
 
-    if (normalizedParam === 'home_garden' && currentVoucherCategoryName === 'home & garden') {
+        if (normalizedParam === 'home_garden' && currentVoucherCategoryName === 'home & garden') {
+
+        } else if (currentVoucherCategoryName !== normalizedParam && currentVoucherCategoryId !== categoryId) {
+          return false;
+        }
+      }
+
+      if (searchQuery.trim() !== '') {
+        const query = searchQuery.toLowerCase().trim();
+        const matchTitle = voucher.title?.toLowerCase().includes(query);
+        const matchDesc = voucher.description?.toLowerCase().includes(query);
+        if (!matchTitle && !matchDesc) return false;
+      }
+
+      if (selectedPrices.length > 0) {
+        const pts = voucher.points || 0;
+        const matchesAnyBracket = selectedPrices.some(bracket => {
+          if (bracket === 'Under 1,000 pts') return pts < 1000;
+          if (bracket === '1,000 - 5,000 pts') return pts >= 1000 && pts <= 5000;
+          if (bracket === 'Over 5,000 pts') return pts > 5000;
+          return false;
+        });
+        if (!matchesAnyBracket) return false;
+      }
+
       return true;
-    }
-    
-    return currentVoucherCategoryName === normalizedParam || currentVoucherCategoryId === categoryId;
-  });
+    })
+    .sort((a, b) => {
+      if (sortBy === 'pts_asc') {
+        return (a.points || 0) - (b.points || 0);
+      }
+      if (sortBy === 'new') {
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      }
+      return 0;
+    });
 
   const displayTitle = () => {
     if (!categoryId || categoryId === 'all') return 'All Vouchers';
@@ -116,20 +149,11 @@ function VoucherCategory() {
   };
 
   const breadcrumbItems = [
-    { 
-      label: 'Categories', 
-      command: () => navigate('/categories/all')
-    },
-    { 
-      label: displayTitle(), 
-      className: 'font-bold text-primary' 
-    }
+    { label: 'Categories', command: () => navigate('/categories/all') },
+    { label: displayTitle(), className: 'font-bold text-primary' }
   ];
 
-  const breadcrumbHome = { 
-    icon: 'pi pi-home', 
-    command: () => navigate('/home')
-  };
+  const breadcrumbHome = { icon: 'pi pi-home', command: () => navigate('/home') };
 
   const sortOptions = [
     { label: 'Recommended', value: 'rec' },
@@ -182,17 +206,13 @@ function VoucherCategory() {
     try {
       const response = await redeemSingleVoucher(pendingVoucher._id);
       setProcessing(false);
-
-      // Safeguard extraction to navigate nested Axios layers safely
       const responseData = response?.data?.data || response?.data || response;
 
       if (responseData && responseData.redemptionCode) {
         setRedemptionCode(responseData.redemptionCode);
         setPdfFilename(responseData.fileName);
-        
         if (responseData.pdfFile) {
           setSavedPdfFile(responseData.pdfFile);
-          
           downloadPdfFromBase64(responseData.pdfFile, responseData.fileName || 'voucher.pdf');
         }
       } else {
@@ -239,7 +259,7 @@ function VoucherCategory() {
     <div className="home-shell">
       <Toast ref={toast} />
       
-      {/* ---------- Top bar (Same as Home) ---------- */}
+      {/* ---------- Top bar ---------- */}
       <header className="home-topbar">
         <div className="home-topbar__inner">
           <div className="flex align-items-center gap-4">
@@ -293,16 +313,16 @@ function VoucherCategory() {
           <aside className="col-12 md:col-3 pr-4">
             <div className="mb-4 pb-3 border-bottom-1 border-300">
               <h2 className="text-2xl font-bold mb-1">
-                {categoryId ? categoryId.charAt(0).toUpperCase() + categoryId.slice(1) : 'All Vouchers'}
+                {displayTitle()}
               </h2>
-              <p className="text-secondary text-sm">{filteredVouchers.length} vouchers available</p>
+              <p className="text-secondary text-sm">{filteredAndSortedVouchers.length} vouchers available</p>
             </div>
 
             <div className="mb-5">
               <h4 className="font-bold mb-3">Categories</h4>
               <div className="grid g-2">
                 
-                {/* Permanent "All Vouchers" Baseline Option */}
+                {/*"All Vouchers" Baseline Option */}
                 <div className="col-6 mb-2">
                   <div 
                     onClick={() => navigate('/categories/all')}
@@ -320,7 +340,6 @@ function VoucherCategory() {
 
                 {/* Live Database Driven Category Options mapping loop */}
                 {visibleCategories.map(cat => {
-                  // Keep your parameter mapping matching your backend database format
                   const categoryUrlParam = cat.name.toLowerCase() === 'home & garden' ? 'home_garden' : cat._id;
                   const isActive = categoryId === categoryUrlParam || categoryId === cat._id;
 
@@ -368,39 +387,51 @@ function VoucherCategory() {
                 ))}
               </div>
             </div>
-
-            <div className="mb-5">
-              <h4 className="font-bold mb-3">Discount %</h4>
-              <div className="flex flex-wrap gap-2">
-                {['10% Off', '25% Off', '50% Off', 'BOGO'].map(tag => (
-                  <Button key={tag} label={tag} size="small" outlined className="p-button-rounded text-xs" />
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-5">
-              <h4 className="font-bold mb-3">Popular Brands</h4>
-              <div className="flex flex-column gap-2">
-                {['Gourmet Garden', 'The Steakhouse', 'Coffee Co.'].map(brand => (
-                  <div key={brand} className="flex align-items-center">
-                    <RadioButton inputId={brand} value={brand} onChange={(e) => setSelectedBrand(e.value)} checked={selectedBrand === brand} />
-                    <label htmlFor={brand} className="ml-2 text-sm">{brand}</label>
-                  </div>
-                ))}
-              </div>
-            </div>
           </aside>
 
           {/* ---------- Main Content ---------- */}
           <section className="col-12 md:col-9">
-            <div className="flex align-items-center justify-content-between mb-4 bg-white p-3 border-round-xl shadow-1 border-1 border-50">
-              <div className="flex align-items-center gap-2">
-                <span className="text-sm text-secondary">Sort by:</span>
-                <Dropdown options={sortOptions} placeholder="Recommended" className="border-none text-sm p-0" />
-              </div>
-              <div className="flex gap-2">
-                <Button icon="pi pi-th-large" text size="small" />
-                <Button icon="pi pi-list" text size="small" severity="secondary" />
+            <div className="flex flex-column md:flex-row align-items-center justify-content-between gap-3 mb-4 bg-white p-3 border-round-xl shadow-1 border-1 border-50">
+              {/* Contextual Local Search Bar Field */}
+              <span className="p-input-icon-left w-full md:w-20rem">
+                <i className="pi pi-search" />
+                <InputText 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search vouchers in this view..." 
+                  className="w-full text-sm p-inputtext-sm" 
+                />
+              </span>
+
+              <div className="flex align-items-center justify-content-between w-full md:w-auto gap-3">
+                {/* Sort Dropdown Selector */}
+                <div className="flex align-items-center gap-2">
+                  <span className="text-sm text-secondary">Sort by:</span>
+                  <Dropdown 
+                    value={sortBy}
+                    options={sortOptions} 
+                    onChange={(e) => setSortBy(e.value)}
+                    placeholder="Recommended" 
+                    className="border-none text-sm p-0" 
+                  />
+                </div>
+
+                {/* View Layout Display Toggle Switches */}
+                <div className="flex gap-2">
+                  <Button 
+                    icon="pi pi-th-large" 
+                    size="small" 
+                    text={viewMode !== 'grid'} 
+                    onClick={() => setViewMode('grid')}
+                  />
+                  <Button 
+                    icon="pi pi-list" 
+                    size="small" 
+                    severity="secondary" 
+                    text={viewMode !== 'list'} 
+                    onClick={() => setViewMode('list')}
+                  />
+                </div>
               </div>
             </div>
 
@@ -410,45 +441,66 @@ function VoucherCategory() {
               </div>
             ) : error ? (
               <Message severity="error" text={error} className="w-full" />
+            ) : filteredAndSortedVouchers.length === 0 ? (
+              <div className="text-center py-6 bg-white border-round-xl shadow-1 border-1 border-50">
+                <i className="pi pi-filter-slash text-4xl text-400 mb-3" />
+                <p className="text-secondary m-0">No vouchers match your current filtering selections.</p>
+              </div>
             ) : (
+              /* Layout Grid/List Switcher Frame */
               <div className="grid">
-                {filteredVouchers.map((voucher) => (
-                  <div className="col-12 md:col-6 lg:col-4 mb-4" key={voucher._id}>
-                    <Card className="home-voucher h-full shadow-1 border-none hover:shadow-3 transition-all transition-duration-200">
-                      <div className="home-voucher__image-wrap">
-                        <img
-                          alt={voucher.title}
-                          className="home-voucher__image"
-                          src={voucher.image || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80'}
-                        />
-                        <Tag
-                          className="home-voucher__badge"
-                          value={formatVoucherValue(voucher.points)}
-                          severity="warning"
-                          rounded
-                        />
-                        <div className="home-voucher__brand">
-                          <i className={`pi ${categoryIcons[formatCategoryName(voucher)] || categoryIcons.General}`} />
-                          <span>{formatCategoryName(voucher)}</span>
+                {filteredAndSortedVouchers.map((voucher) => (
+                  <div 
+                    className={viewMode === 'grid' ? "col-12 md:col-6 lg:col-4 mb-4" : "col-12 mb-3"} 
+                    key={voucher._id}
+                  >
+                    <Card className={`home-voucher h-full shadow-1 border-none hover:shadow-3 transition-all transition-duration-200 ${viewMode === 'list' ? 'p-0' : ''}`}>
+                      <div className={`flex ${viewMode === 'list' ? 'flex-column md:flex-row align-items-center gap-4 p-3' : 'flex-column'}`}>
+                        <div 
+                          className="cursor-pointer flex-1 w-full" 
+                          onClick={() => navigate(`/vouchers/${voucher._id}`)}
+                        >
+                          {/*Image wrap block */}
+                          <div className="home-voucher__image-wrap" style={viewMode === 'list' ? { width: '100%', maxWidth: '200px', height: '140px', flexShrink: 0 } : {}}>
+                            <img
+                              alt={voucher.title}
+                              className="home-voucher__image"
+                              src={voucher.image || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80'}
+                            />
+                            <Tag
+                              className="home-voucher__badge"
+                              value={formatVoucherValue(voucher.points)}
+                              severity="warning"
+                              rounded
+                            />
+                            <div className="home-voucher__brand">
+                              <i className={`pi ${categoryIcons[formatCategoryName(voucher)] || categoryIcons.General}`} />
+                              <span>{formatCategoryName(voucher)}</span>
+                            </div>
+                          </div>
+
+                          {/* Text informational body */}
+                          <h3 className="home-voucher__title mt-3 mb-1 text-lg font-bold text-900 hover:text-primary transition-colors">
+                            {voucher.title}
+                          </h3>
+                          <p className="home-voucher__desc text-sm line-height-3 mb-3 text-secondary">
+                            {voucher.description || 'Enjoy premium dining and exclusive flavors.'}
+                          </p>
+                          
+                          <div className="flex align-items-center gap-2 mb-3">
+                            <i className="pi pi-star-fill text-yellow-500 text-xs" />
+                            <span className="text-xs font-bold">4.8</span>
+                            <span className="text-xs text-secondary">(1.2k reviews)</span>
+                          </div>
                         </div>
-                      </div>
 
-                      <h3 className="home-voucher__title mt-3 mb-1 text-lg font-bold">{voucher.title}</h3>
-                      <p className="home-voucher__desc text-sm line-height-3 mb-3 text-secondary">
-                        {voucher.description || 'Enjoy premium dining and exclusive flavors.'}
-                      </p>
-                      
-                      <div className="flex align-items-center gap-2 mb-3">
-                        <i className="pi pi-star-fill text-yellow-500 text-xs" />
-                        <span className="text-xs font-bold">4.8</span>
-                        <span className="text-xs text-secondary">(1.2k reviews)</span>
-                      </div>
+                        <div className="home-voucher__footer pt-3 border-top-1 border-50 flex align-items-center justify-content-between w-full">
+                          <span className="home-voucher__points text-xl font-bold">
+                            {formatVoucherValue(voucher.points)}
+                          </span>
+                          <Button label="Redeem Now" size="small" onClick={() => askRedeemConfirmation(voucher)} />
+                        </div>
 
-                      <div className="home-voucher__footer pt-3 border-top-1 border-50">
-                        <span className="home-voucher__points text-xl font-bold">
-                          {formatVoucherValue(voucher.points)}
-                        </span>
-                        <Button label="Redeem Now" size="small" onClick={() => askRedeemConfirmation(voucher)} />
                       </div>
                     </Card>
                   </div>
@@ -459,7 +511,7 @@ function VoucherCategory() {
         </div>
       </main>
 
-      {/* 🛑 Dialog 1: Misclick Confirmation Guard */}
+      {/* Dialog: Misclick Confirmation Guard */}
       <Dialog
         header="Confirm Redemption"
         visible={confirmVisible}
@@ -477,7 +529,7 @@ function VoucherCategory() {
         </p>
       </Dialog>
 
-      {/* 🎫 Dialog 2: Transaction Feedback Result Layout */}
+      {/* Dialog: Transaction Feedback Result Layout */}
       <Dialog
         visible={resultVisible}
         onHide={() => setResultVisible(false)}
