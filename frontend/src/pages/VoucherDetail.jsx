@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Avatar } from 'primereact/avatar';
@@ -9,8 +9,10 @@ import { Card } from 'primereact/card';
 import { Toast } from 'primereact/toast';
 import { BreadCrumb } from 'primereact/breadcrumb';
 import { Dialog } from 'primereact/dialog';
+import { ProgressSpinner } from 'primereact/progressspinner';
 import './Home.css';
 import { getCart, redeemSingleVoucher } from '../api/cart';
+import { getVoucherDetails } from '../api/vouchers';
 import apiClient from '../api/client';
 
 const downloadPdfFromBase64 = (base64String, fileName) => {
@@ -59,9 +61,13 @@ function formatVoucherValue(points) {
 }
 
 function VoucherDetail() {
+  const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const toast = useRef(null);
+
+  const [voucher, setVoucher] = useState(location.state?.voucher || null);
+  const [loading, setLoading] = useState(!voucher);
   const [cartCount, setCartCount] = useState(0);
   const [redemptionCode, setRedemptionCode] = useState('');
   const [pdfFilename, setPdfFilename] = useState('');
@@ -70,34 +76,55 @@ function VoucherDetail() {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
   const [savedPdfFile, setSavedPdfFile] = useState(null);
-  const voucher = location.state?.voucher;
 
   useEffect(() => {
     let active = true;
 
-    async function loadCartCount() {
+    async function loadData() {
       try {
-        const data = await getCart();
-        if (active && Array.isArray(data)) {
-          setCartCount(data.length);
+        const cartData = await getCart();
+        if (active && Array.isArray(cartData)) {
+          setCartCount(cartData.length);
+        }
+
+        if (!voucher && id) {
+          const voucherData = await getVoucherDetails(id);
+          if (active) {
+            setVoucher(voucherData?.data || voucherData);
+          }
         }
       } catch (err) {
-        console.error('Failed to load cart count', err);
+        console.error('Data loading error:', err);
+        if (active) {
+          setError(err.message || 'Failed to sync voucher details from network.');
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
     }
-    loadCartCount();
+    loadData();
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [id, voucher]);
 
-  if (!voucher) {
+  if (loading) {
+    return (
+      <div className="home-shell flex justify-content-center align-items-center min-h-screen">
+        <ProgressSpinner style={{ width: '50px', height: '50px' }} />
+      </div>
+    );
+  }
+
+  if (error || !voucher) {
     return (
       <div className="home-shell" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
         <div style={{ textAlign: 'center' }}>
-          <i className="pi pi-exclamation-circle" style={{ fontSize: '3rem', color: '#6c757d', display: 'block', marginBottom: '1rem' }} />
-          <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>No voucher selected.</p>
+          <i className="pi pi-exclamation-circle" style={{ fontSize: '3rem', color: '#dc2626', display: 'block', marginBottom: '1rem' }} />
+          <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>{error || "No voucher selected."}</p>
           <Button label="Back to Home" icon="pi pi-arrow-left" onClick={() => navigate('/home')} />
         </div>
       </div>
@@ -107,8 +134,15 @@ function VoucherDetail() {
   const categoryName = voucher.category_id?.name || 'General';
   const categoryIcon = categoryIcons[categoryName] || categoryIcons.General;
 
+  const categoryUrlParam = voucher.category_id?.name?.toLowerCase() === 'home & garden' 
+    ? 'home_garden' 
+    : (voucher.category_id?._id || 'all');
+
   const breadcrumbItems = [
-    { label: categoryName, command: () => navigate('/home') },
+    { 
+      label: categoryName, 
+      command: () => navigate(`/categories/${categoryUrlParam}`)
+    },
     { label: voucher.title },
   ];
   const breadcrumbHome = { icon: 'pi pi-home', command: () => navigate('/home') };
