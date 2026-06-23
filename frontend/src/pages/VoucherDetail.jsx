@@ -8,8 +8,9 @@ import { Tag } from 'primereact/tag';
 import { Card } from 'primereact/card';
 import { Toast } from 'primereact/toast';
 import { BreadCrumb } from 'primereact/breadcrumb';
+import { Dialog } from 'primereact/dialog';
 import './Home.css';
-import { getCart } from '../api/cart';
+import { getCart, redeemSingleVoucher } from '../api/cart';
 import apiClient from '../api/client';
 
 const navItems = [
@@ -40,6 +41,12 @@ function VoucherDetail() {
   const navigate = useNavigate();
   const toast = useRef(null);
   const [cartCount, setCartCount] = useState(0);
+  const [redemptionCode, setRedemptionCode] = useState('');
+  const [pdfFilename, setPdfFilename] = useState('');
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState('');
   const voucher = location.state?.voucher;
 
   useEffect(() => {
@@ -83,34 +90,87 @@ function VoucherDetail() {
   ];
   const breadcrumbHome = { icon: 'pi pi-home', command: () => navigate('/home') };
 
-  const handleRedeem = () => {
-    toast.current.show({
-      severity: 'success',
-      summary: 'Voucher Redeemed!',
-      detail: `${voucher.title} has been added to your wallet.`,
-      life: 3000,
-    });
+  const handleDirectRedeem = async () => {
+    setProcessing(true);
+    try {
+      const data = await redeemSingleVoucher(voucher._id);
+      setProcessing(false);
+
+      if (data && data.redemptionCode) {
+        setRedemptionCode(data.redemptionCode);
+        setPdfFilename(data.fileName);
+      } else {
+        setRedemptionCode('UNKNOWN-ERR');
+        setPdfFilename('');
+      }
+
+      setOrderSuccess(true);
+      setDialogVisible(true);
+    } catch (err) {
+      setProcessing(false);
+      setOrderSuccess(false);
+      setError(err.message || "We couldn't process your request.");
+      setDialogVisible(true);
+    }
   };
 
   const handleAddToCart = async () => {
-  try {
-    await apiClient.post(`/cart`, { 
-      voucher: voucher._id, 
-      quantity: 1 
-    });
+    try {
+      await apiClient.post(`/cart`, { 
+        voucher: voucher._id, 
+        quantity: 1 
+      });
+      navigate('/cart');
+    } catch (error) {
+      console.error("Failed to update database cart:", error);
+      toast.current.show({
+        severity: 'error',
+        summary: 'Cart Error',
+        detail: 'Could not add item to cart. Please try again.',
+        life: 3000,
+      });
+    }
+  };
 
-    navigate('/cart');
+  const successDialogFooter = (
+    <div className="flex flex-column gap-2 w-full">
+      <Button
+        label="Download PDF Voucher"
+        icon="pi pi-download"
+        className="w-full"
+        onClick={() => {
+          if (pdfFilename) {
+            const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
+            const link = document.createElement('a');
+            link.href = `${serverUrl}/api/vouchers/download/${pdfFilename}`;
+            link.setAttribute('download', pdfFilename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
+        }}
+      />
+      <Button
+        label="Back to Home"
+        icon="pi pi-home"
+        outlined
+        className="w-full"
+        onClick={() => { setDialogVisible(false); navigate('/home'); }}
+      />
+    </div>
+  );
 
-  } catch (error) {
-    console.error("Failed to update database cart:", error);
-    toast.current.show({
-      severity: 'error',
-      summary: 'Cart Error',
-      detail: 'Could not add item to cart. Please try again.',
-      life: 3000,
-    });
-  }
-};
+  const failureDialogFooter = (
+    <div className="flex flex-column gap-2 w-full">
+      <Button
+        label="Retry Payment"
+        icon="pi pi-refresh"
+        className="w-full"
+        onClick={() => { setDialogVisible(false); handleDirectRedeem(); }}
+      />
+      <Button label="Close" text className="w-full" onClick={() => setDialogVisible(false)} />
+    </div>
+  );
 
   return (
     <div className="home-shell">
@@ -265,7 +325,7 @@ function VoucherDetail() {
                   label="Redeem Now"
                   icon="pi pi-check"
                   className="w-full mb-3"
-                  onClick={handleRedeem}
+                  onClick={handleDirectRedeem}
                 />
                 <Button
                   label="Add to Cart"
@@ -295,6 +355,35 @@ function VoucherDetail() {
           </div>
         </div>
       </main>
+
+      <Dialog
+        visible={dialogVisible}
+        onHide={() => setDialogVisible(false)}
+        footer={orderSuccess ? successDialogFooter : failureDialogFooter}
+        closable={false}
+        style={{ width: '32rem' }}
+        contentStyle={{ textAlign: 'center', padding: '2rem' }}
+      >
+        {orderSuccess ? (
+          <>
+            <div className="flex align-items-center justify-content-center border-circle mx-auto mb-4" style={{ width: '6rem', height: '6rem', background: '#dcfce7' }}>
+              <i className="pi pi-check-circle" style={{ fontSize: '3.5rem', color: '#16a34a' }} />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Redemption Successful!</h2>
+            <p style={{ color: '#6c757d', lineHeight: 1.6 }}>
+              Your voucher code <strong className="font-mono">{redemptionCode}</strong> is ready for use.
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="flex align-items-center justify-content-center border-circle mx-auto mb-4" style={{ width: '6rem', height: '6rem', background: '#fee2e2' }}>
+              <i className="pi pi-times-circle" style={{ fontSize: '3.5rem', color: '#dc2626' }} />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Redemption Failed</h2>
+            <p style={{ color: '#6c757d', lineHeight: 1.6 }}>{error || "We couldn't process your request."}</p>
+          </>
+        )}
+      </Dialog>
 
       {/* Footer */}
       <footer className="home-footer">

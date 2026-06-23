@@ -30,3 +30,14 @@ export async function redeemCart() {
     throw new Error(serverMessage || `Redemption failed with status ${error.response?.status}`);
   }
 }
+
+// Used for single voucher redeem in VoucherDetail and VoucherCategory
+export async function redeemSingleVoucher(voucherId) {
+  try {
+    const response = await apiClient.post('/cart/redeem-single', { voucherId });
+    return response.data;
+  } catch (error) {
+    const serverMessage = error.response?.data?.message;
+    throw new Error(serverMessage || `Redemption failed with status ${error.response?.status}`);
+  }
+}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Avatar } from 'primereact/avatar';
@@ -13,9 +13,9 @@ import { Checkbox } from 'primereact/checkbox';
 import { RadioButton } from 'primereact/radiobutton';
 import { Dropdown } from 'primereact/dropdown';
 import { Toast } from 'primereact/toast';
+import { Dialog } from 'primereact/dialog';
 import { getVouchers } from '../api/vouchers';
-import { useParams } from 'react-router-dom';
-import { getCart } from '../api/cart';
+import { getCart, redeemSingleVoucher } from '../api/cart';
 import './Home.css';
 
 const navItems = [
@@ -46,14 +46,22 @@ function formatVoucherValue(points) {
 
 function VoucherCategory() {
   const { categoryId } = useParams();
+  const navigate = useNavigate();
+  const toast = useRef(null);
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedPrices, setSelectedPrices] = useState([]);
   const [selectedBrand, setSelectedBrand] = useState(null);
   const [cartCount, setCartCount] = useState(0);
-  const toast = useRef(null);
-  const navigate = useNavigate();
+  const [pendingVoucher, setPendingVoucher] = useState(null); 
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [redemptionCode, setRedemptionCode] = useState('');
+  const [pdfFilename, setPdfFilename] = useState('');
+  const [resultVisible, setResultVisible] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [txError, setTxError] = useState('');
 
   const filteredVouchers = vouchers.filter(voucher => {
     if (!categoryId || categoryId === 'all') return true; 
@@ -115,14 +123,65 @@ function VoucherCategory() {
     setSelectedPrices(_selectedPrices);
   };
 
-  const handleRedeem = (voucher) => {
-    toast.current.show({
-      severity: 'success',
-      summary: 'Voucher Redeemed',
-      detail: `${voucher.title} added to wallet!`,
-      life: 3000
-    });
+  const askRedeemConfirmation = (voucher) => {
+    setPendingVoucher(voucher);
+    setConfirmVisible(true);
   };
+  
+  const handleConfirmedRedeem = async () => {
+    if (!pendingVoucher) return;
+    setConfirmVisible(false);
+    setProcessing(true);
+    
+    try {
+      const data = await redeemSingleVoucher(pendingVoucher._id);
+      setProcessing(false);
+
+      if (data && data.redemptionCode) {
+        setRedemptionCode(data.redemptionCode);
+        setPdfFilename(data.fileName);
+      } else {
+        setRedemptionCode('UNKNOWN-ERR');
+        setPdfFilename('');
+      }
+
+      setOrderSuccess(true);
+      setResultVisible(true);
+    } catch (err) {
+      setProcessing(false);
+      setOrderSuccess(false);
+      setTxError(err.message || "Redemption failed.");
+      setResultVisible(true);
+    }
+  };
+
+  const successDialogFooter = (
+    <div className="flex flex-column gap-2 w-full">
+      <Button
+        label="Download PDF Voucher"
+        icon="pi pi-download"
+        className="w-full"
+        onClick={() => {
+          if (pdfFilename) {
+            const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
+            const link = document.createElement('a');
+            link.href = `${serverUrl}/api/vouchers/download/${pdfFilename}`;
+            link.setAttribute('download', pdfFilename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
+        }}
+      />
+      <Button label="Done" icon="pi pi-check" outlined className="w-full" onClick={() => setResultVisible(false)} />
+    </div>
+  );
+
+  const failureDialogFooter = (
+    <div className="flex flex-column gap-2 w-full">
+      <Button label="Close" text className="w-full" onClick={() => setResultVisible(false)} />
+    </div>
+  );
 
   return (
     <div className="home-shell">
@@ -310,26 +369,64 @@ function VoucherCategory() {
                         <span className="home-voucher__points text-xl font-bold">
                           {formatVoucherValue(voucher.points)}
                         </span>
-                        <Button label="Redeem Now" size="small" onClick={() => handleRedeem(voucher)} />
+                        <Button label="Redeem Now" size="small" onClick={() => askRedeemConfirmation(voucher)} />
                       </div>
                     </Card>
                   </div>
                 ))}
-                
-                <div className="col-12">
-                  <div className="flex flex-column align-items-center justify-content-center p-6 border-2 border-dashed border-300 border-round-xl bg-gray-50 cursor-pointer hover:bg-white transition-all">
-                    <div className="w-3rem h-3rem border-circle bg-white flex align-items-center justify-content-center mb-3 shadow-1">
-                      <i className="pi pi-plus text-primary" />
-                    </div>
-                    <p className="font-bold mb-1">View More Offers</p>
-                    <p className="text-secondary text-xs">Showing {filteredVouchers.length} vouchers</p>
-                  </div>
-                </div>
               </div>
             )}
           </section>
         </div>
       </main>
+
+      {/* 🛑 Dialog 1: Misclick Confirmation Guard */}
+      <Dialog
+        header="Confirm Redemption"
+        visible={confirmVisible}
+        style={{ width: '28rem' }}
+        onHide={() => setConfirmVisible(false)}
+        footer={
+          <div>
+            <Button label="Cancel" icon="pi pi-times" text onClick={() => setConfirmVisible(false)} />
+            <Button label="Confirm" icon="pi pi-check" loading={processing} onClick={handleConfirmedRedeem} autoFocus />
+          </div>
+        }
+      >
+        <p className="m-0">
+          Are you sure you want to spend <strong>{pendingVoucher && formatVoucherValue(pendingVoucher.points)}</strong> to instantly redeem <strong>{pendingVoucher?.title}</strong>?
+        </p>
+      </Dialog>
+
+      {/* 🎫 Dialog 2: Transaction Feedback Result Layout */}
+      <Dialog
+        visible={resultVisible}
+        onHide={() => setResultVisible(false)}
+        footer={orderSuccess ? successDialogFooter : failureDialogFooter}
+        closable={false}
+        style={{ width: '32rem' }}
+        contentStyle={{ textAlign: 'center', padding: '2rem' }}
+      >
+        {orderSuccess ? (
+          <>
+            <div className="flex align-items-center justify-content-center border-circle mx-auto mb-4" style={{ width: '6rem', height: '6rem', background: '#dcfce7' }}>
+              <i className="pi pi-check-circle" style={{ fontSize: '3.5rem', color: '#16a34a' }} />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Redemption Successful!</h2>
+            <p style={{ color: '#6c757d', lineHeight: 1.6 }}>
+              Your voucher code <strong className="font-mono">{redemptionCode}</strong> is ready.
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="flex align-items-center justify-content-center border-circle mx-auto mb-4" style={{ width: '6rem', height: '6rem', background: '#fee2e2' }}>
+              <i className="pi pi-times-circle" style={{ fontSize: '3.5rem', color: '#dc2626' }} />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Redemption Failed</h2>
+            <p style={{ color: '#6c757d', lineHeight: 1.6 }}>{txError || "We couldn't process your transaction."}</p>
+          </>
+        )}
+      </Dialog>
 
       {/* ---------- Footer (Same as Home) ---------- */}
       <footer className="home-footer">
