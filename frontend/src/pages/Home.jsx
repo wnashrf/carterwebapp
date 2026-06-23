@@ -262,43 +262,48 @@ function Home() {
             <div className="grid">
               {trendingVouchers.map((voucher, index) => (
                 <div className="col-12 md:col-6 lg:col-3" key={voucher._id}>
-                  <Card 
-                    className="home-voucher h-full"
-                    onClick={() => navigate('/voucher-detail', { state: { voucher } })}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <div className="home-voucher__image-wrap">
-                      <img
-                        alt={voucher.title}
-                        className="home-voucher__image"
-                        src={voucher.image || spotlightImage}
-                      />
-                      <Tag
-                        className="home-voucher__badge"
-                        value={
-                          index === 0 ? 'Trending' : formatVoucherValue(voucher.points)
-                        }
-                        severity={index === 0 ? 'warning' : 'info'}
-                        rounded
-                      />
-                      <div className="home-voucher__brand">
-                        <i className={`pi ${categoryIcons[formatCategoryName(voucher)] || categoryIcons.General}`} />
-                        <span>{formatCategoryName(voucher)}</span>
+                  <Card className="home-voucher h-full p-0">
+                    
+                    {/* 🖱️ Clickable Area Wrapper for Details Redirection */}
+                    <div 
+                      className="cursor-pointer w-full"
+                      onClick={() => navigate(`/vouchers/${voucher._id}`)}
+                    >
+                      <div className="home-voucher__image-wrap">
+                        <img
+                          alt={voucher.title}
+                          className="home-voucher__image"
+                          src={voucher.image || spotlightImage}
+                        />
+                        <Tag
+                          className="home-voucher__badge"
+                          value={
+                            index === 0 ? 'Trending' : formatVoucherValue(voucher.points)
+                          }
+                          severity={index === 0 ? 'warning' : 'info'}
+                          rounded
+                        />
+                        <div className="home-voucher__brand">
+                          <i className={`pi ${categoryIcons[formatCategoryName(voucher)] || categoryIcons.General}`} />
+                          <span>{formatCategoryName(voucher)}</span>
+                        </div>
                       </div>
+
+                      <h3 className="home-voucher__title mt-3 px-3">{voucher.title}</h3>
+                      <p className="home-voucher__desc px-3">
+                        {voucher.description || 'No description available for this voucher yet.'}
+                      </p>
                     </div>
 
-                    <h3 className="home-voucher__title">{voucher.title}</h3>
-                    <p className="home-voucher__desc">
-                      {voucher.description || 'No description available for this voucher yet.'}
-                    </p>
-                    <div className="home-voucher__footer">
+                    {/* Action Footer (Kept independent) */}
+                    <div className="home-voucher__footer px-3 pb-3">
                       <span className="home-voucher__points">
                         {formatVoucherValue(voucher.points)}
                       </span>
                       <Button 
                         label="View Details" 
                         size="small" 
-                        onClick={() => navigate('/voucher-detail', { state: { voucher } })}
+                        onClick={() => navigate(`/vouchers/${voucher._id}`)}
                       />
                     </div>
                   </Card>
