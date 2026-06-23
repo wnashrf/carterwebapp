@@ -454,18 +454,33 @@ function VoucherCategory() {
                     className={viewMode === 'grid' ? "col-12 md:col-6 lg:col-4 mb-4" : "col-12 mb-3"} 
                     key={voucher._id}
                   >
-                    <Card className={`home-voucher h-full shadow-1 border-none hover:shadow-3 transition-all transition-duration-200 ${viewMode === 'list' ? 'p-0' : ''}`}>
-                      <div className={`flex ${viewMode === 'list' ? 'flex-column md:flex-row align-items-center gap-4 p-3' : 'flex-column'}`}>
+                    <Card 
+                      className="home-voucher h-full shadow-1 border-none"
+                      style={{ overflow: 'hidden' }}
+                      bodyClassName="p-0"
+                    >
+                      <div className={`flex ${viewMode === 'list' ? 'flex-column sm:flex-row align-items-stretch' : 'flex-column'}`}>
                         <div 
-                          className="cursor-pointer flex-1 w-full" 
+                          className={`cursor-pointer flex-1 w-full flex ${viewMode === 'list' ? 'flex-column sm:flex-row align-items-center gap-4' : 'flex-column'}`} 
                           onClick={() => navigate(`/vouchers/${voucher._id}`)}
                         >
-                          {/*Image wrap block */}
-                          <div className="home-voucher__image-wrap" style={viewMode === 'list' ? { width: '100%', maxWidth: '200px', height: '140px', flexShrink: 0 } : {}}>
+                          <div 
+                            className="home-voucher__image-wrap" 
+                            style={viewMode === 'list' ? { width: '100%', sm: '200px', maxWidth: '200px', height: '140px', flexShrink: 0, position: 'relative' } : { position: 'relative' }}
+                          >
                             <img
                               alt={voucher.title}
                               className="home-voucher__image"
                               src={voucher.image || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80'}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                            <div 
+                              style={{
+                                position: 'absolute',
+                                inset: 0,
+                                background: 'linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,0.6) 100%)',
+                                pointerEvents: 'none'
+                              }}
                             />
                             <Tag
                               className="home-voucher__badge"
@@ -473,32 +488,49 @@ function VoucherCategory() {
                               severity="warning"
                               rounded
                             />
-                            <div className="home-voucher__brand">
+                            <div className="home-voucher__brand" style={{ zIndex: 2 }}>
                               <i className={`pi ${categoryIcons[formatCategoryName(voucher)] || categoryIcons.General}`} />
                               <span>{formatCategoryName(voucher)}</span>
                             </div>
                           </div>
 
-                          {/* Text informational body */}
-                          <h3 className="home-voucher__title mt-3 mb-1 text-lg font-bold text-900 hover:text-primary transition-colors">
-                            {voucher.title}
-                          </h3>
-                          <p className="home-voucher__desc text-sm line-height-3 mb-3 text-secondary">
-                            {voucher.description || 'Enjoy premium dining and exclusive flavors.'}
-                          </p>
-                          
-                          <div className="flex align-items-center gap-2 mb-3">
-                            <i className="pi pi-star-fill text-yellow-500 text-xs" />
-                            <span className="text-xs font-bold">4.8</span>
-                            <span className="text-xs text-secondary">(1.2k reviews)</span>
+                          {/* Text Informational Body */}
+                          <div className={`w-full ${viewMode === 'list' ? 'px-3 sm:px-0 py-3' : 'p-3'}`}>
+                            <h3 className="home-voucher__title mt-0 mb-1 text-lg font-bold text-900 hover:text-primary transition-colors">
+                              {voucher.title}
+                            </h3>
+                            <p className="home-voucher__desc text-sm line-height-3 mb-2 text-secondary">
+                              {voucher.description || 'Enjoy premium dining and exclusive flavors.'}
+                            </p>
+                            
+                            <div className="flex align-items-center gap-2 m-0">
+                              <i className="pi pi-star-fill text-yellow-500 text-xs" />
+                              <span className="text-xs font-bold">4.8</span>
+                              <span className="text-xs text-secondary">(1.2k reviews)</span>
+                            </div>
                           </div>
                         </div>
 
-                        <div className="home-voucher__footer pt-3 border-top-1 border-50 flex align-items-center justify-content-between w-full">
-                          <span className="home-voucher__points text-xl font-bold">
+                        {/*Action Footer*/}
+                        <div 
+                          className={
+                            viewMode === 'list' 
+                              ? 'w-full sm:w-16rem p-4 border-none border-left-1 border-100 flex flex-row sm:flex-column align-items-center justify-content-center sm:justify-content-center gap-3 bg-gray-50' 
+                              : 'home-voucher__footer flex align-items-center justify-content-between pt-3 px-3 pb-3 w-full border-top-1 border-50'
+                          }
+                        >
+                          <span className="text-xl font-bold text-900 sm:mb-1">
                             {formatVoucherValue(voucher.points)}
                           </span>
-                          <Button label="Redeem Now" size="small" onClick={() => askRedeemConfirmation(voucher)} />
+                          <Button 
+                            label="Redeem Now" 
+                            size="small" 
+                            className={viewMode === 'list' ? 'w-full' : ''} 
+                            onClick={(e) => {
+                              e.stopPropagation(); 
+                              askRedeemConfirmation(voucher);
+                            }} 
+                          />
                         </div>
 
                       </div>
