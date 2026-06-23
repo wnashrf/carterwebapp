@@ -31,21 +31,21 @@ function Wallet() {
   const [cartCount, setCartCount] = useState(0);
   const [loading, setLoading] = useState(true);
   
-  // Modal states for consuming active vouchers
   const [activeVoucher, setActiveVoucher] = useState(null);
   const [qrVisible, setQrVisible] = useState(false);
 
   useEffect(() => {
-    let active = true;
+  let active = true;
     async function fetchWalletData() {
       try {
         const userRes = await apiClient.get('/auth/profile');
         const userData = userRes.data;
+        
         if (active && userData) {
-          setUserPoints(userData.points || 0);
+          const profileUserObj = userData.user || userData; 
+          setUserPoints(Number(profileUserObj.points || 0));
         }
 
-        // Pointing to CartItemHistory backend collection logs
         const historyRes = await apiClient.get('/cart/history'); 
         if (active) {
           setHistoryItems(Array.isArray(historyRes.data) ? historyRes.data : []);
@@ -65,8 +65,6 @@ function Wallet() {
     return () => { active = false; };
   }, []);
 
-  // Filter items logic: Simulated flag toggle
-  // Active means redeemed items. (In a full scale deployment, you could track an 'isUsed' boolean attribute)
   const activeVouchers = historyItems.filter(item => !item.isUsed);
   const usedVouchers = historyItems.filter(item => item.isUsed);
 
@@ -114,9 +112,9 @@ function Wallet() {
       </header>
 
       {/* ---------- Main View Grid Elements ---------- */}
-      <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '2rem 1.5rem' }}>
+      <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '2rem 1.5rem', minHeight: 'calc(100vh - 70px - 250px)' }}>
         
-        {/* 💳 Points Balance Summary Header Card */}
+        {/*Points Balance Summary Header Card */}
         <Card className="shadow-2 border-none mb-4 text-white" style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)', borderRadius: '1rem' }}>
           <div className="flex align-items-center justify-content-between p-2">
             <div>
@@ -135,7 +133,7 @@ function Wallet() {
           <Card className="shadow-1 border-none">
             <TabView>
               
-              {/* 🎫 TAB 1: ACTIVE VALID VOUCHERS */}
+              {/*TAB: ACTIVE VALID VOUCHERS */}
               <TabPanel header={`Active (${activeVouchers.length})`} leftIcon="pi pi-ticket mr-2">
                 {activeVouchers.length === 0 ? (
                   <div className="text-center py-6 text-secondary">
@@ -170,7 +168,7 @@ function Wallet() {
                 )}
               </TabPanel>
 
-              {/* 📜 TAB 2: USED/EXPIRED HISTORY LOGS */}
+              {/*TAB: USED/EXPIRED HISTORY LOGS */}
               <TabPanel header="Used / Expired" leftIcon="pi pi-history mr-2">
                 {usedVouchers.length === 0 ? (
                   <div className="text-center py-6 text-secondary">
@@ -198,7 +196,7 @@ function Wallet() {
         )}
       </main>
 
-      {/*USE VOUCHER DIALOG POPUP OVERLAY */}
+      {/* USE VOUCHER DIALOG POPUP OVERLAY */}
       <Dialog
         header="Voucher Redemption Pass"
         visible={qrVisible}
@@ -212,7 +210,6 @@ function Wallet() {
           <div className="flex flex-column align-items-center gap-3">
             <h3 className="font-bold m-0">{activeVoucher.voucher?.title}</h3>
             
-            {/* Dynamic QR code structure passing the unique coupon string */}
             <div className="p-3 bg-gray-100 border-round-xl inline-block my-2">
               <img 
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${activeVoucher.uniqueCode}`} 
@@ -221,7 +218,6 @@ function Wallet() {
               />
             </div>
 
-            {/*Display the unique human-readable voucher code */}
             <div className="w-full bg-blue-50 border-round-md p-2 my-1 border-1 border-blue-200">
               <p className="text-xs text-secondary uppercase tracking-wider font-semibold mb-1">Voucher Code</p>
               <span className="font-mono text-xl font-bold text-primary tracking-widest">
@@ -237,6 +233,38 @@ function Wallet() {
           </div>
         )}
       </Dialog>
+
+      <footer className="home-footer">
+        <div className="home-footer__inner grid">
+          <div className="col-12 md:col-5">
+            <span className="home-brand">
+              <i className="pi pi-ticket mr-2" />
+              Carter Redeem
+            </span>
+            <p className="mt-2 text-sm opacity-70">
+              A modern voucher platform powered by React and MongoDB.
+            </p>
+          </div>
+          <div className="col-6 md:col-2">
+            <strong>Company</strong>
+            <a href="/">About Us</a>
+            <a href="/">Contact Us</a>
+          </div>
+          <div className="col-6 md:col-2">
+            <strong>Support</strong>
+            <a href="/">Help Center</a>
+            <a href="/">Redemption Guide</a>
+          </div>
+          <div className="col-6 md:col-3">
+            <strong>Legal</strong>
+            <a href="/">Privacy Policy</a>
+            <a href="/">Terms of Service</a>
+          </div>
+        </div>
+        <div className="home-footer__bottom opacity-50 text-xs">
+          Copyright 2026 Carter Redeem Web App Voucher Management.
+        </div>
+      </footer>
     </div>
   );
 }
