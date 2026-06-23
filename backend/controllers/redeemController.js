@@ -72,6 +72,7 @@ exports.redeem = async (req, res) => {
     await CartItem.deleteMany({ user: req.userId });
 
     const totalVoucherCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+    const pdfBase64 = pdfResult.pdfBuffer.toString('base64');
 
     res.status(200).json({ 
       message: 'Redeemed',
@@ -79,7 +80,8 @@ exports.redeem = async (req, res) => {
       redemptionCode: totalVoucherCount === 1 && pdfResult.generatedCodes?.[0]
         ? pdfResult.generatedCodes[0]
         : "Multiple Vouchers",
-      fileName: pdfResult.filename
+      fileName: pdfResult.filename,
+      pdfFile: pdfBase64
      });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -145,11 +147,14 @@ exports.redeemSingle = async (req, res) => {
     user.points -= voucher.points;
     await user.save();
 
+    const pdfBase64 = pdfResult.pdfBuffer.toString('base64');
+
     res.status(200).json({
       message: 'Redeemed successfully',
       remaining: user.points,
       redemptionCode: pdfResult.generatedCodes?.[0] || "VOUCHER-ERR",
-      fileName: pdfResult.filename
+      fileName: pdfResult.filename,
+      pdfFile: pdfBase64
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

@@ -1,108 +1,134 @@
 // utils/pdfGenerator.js
- 
 const PDFDocument = require('pdfkit');
-const fs = require('fs');
-const path = require('path');
 const { v4: uuidv4 } = require('uuid');
- 
+const QRCode = require('qrcode');
+
 /**
- * Generate PDF for redeemed voucher
- *
- * @param {Object} redemptionData - { userName, voucherTitle, points, category }
- * @returns {Promise<string>} - PDF filename
+ * Generate a beautiful, styled PDF for redeemed vouchers in memory as a Buffer stream
  */
 async function generateRedemptionPDF(redemptionData) {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     try {
-      const { userName, items, totalPoints } = redemptionData;
+      const { userName, items } = redemptionData;
       const generatedCodes = [];
      
-      // Create filename
       const masterFileId = uuidv4().toUpperCase().slice(0, 6);
       const filename = `VOUCHER_${masterFileId}_${Date.now()}.pdf`;
-      const filepath = path.join(process.env.VOUCHER_PDF_PATH || './vouchers/', filename);
       
-      // Ensure vouchers directory exists
-      if (!fs.existsSync(path.dirname(filepath))) {
-        fs.mkdirSync(path.dirname(filepath), { recursive: true });
-      }
-      
-      // Create PDF document
+      // Create PDF document (wiping default margins so we can draw full-width headers)
       const doc = new PDFDocument({
         size: 'A4',
-        margin: 50
+        margin: 0 
       });
       
-      // Write to file
-      const stream = fs.createWriteStream(filepath);
-      doc.pipe(stream);
-      
-      let isFirstPage = true;
+      const buffers = [];
+      doc.on('data', chunk => buffers.push(chunk));
+      doc.on('end', () => {
+        const pdfBuffer = Buffer.concat(buffers);
+        resolve({ pdfBuffer, generatedCodes, filename });
+      });
 
-      items.forEach((item, index) => {
+      let isFirstPage = true;
+      
+      // 🎨 BRANDING BRAND SETUP: Define your primary design accent theme color here
+      const THEME_COLOR = '#1e3a8a'; // Premium Deep Indigo/Navy Blue
+
+      for (const item of items) {
         const qty = item.quantity || 1;
         for (let i = 0; i < qty; i++) {
-          const itemVoucherCode = uuidv4().toUpperCase().slice(0,8);
+          const itemVoucherCode = uuidv4().toUpperCase().slice(0, 8);
           generatedCodes.push(itemVoucherCode);
 
           if (isFirstPage) {
             isFirstPage = false;
           } else {
-            doc.addPage();
+            doc.addPage({ margin: 0 });
           }
           
           const title = item.voucher?.title || 'Unknown Voucher';
           const catName = item.voucher?.category_id?.name || 'General';
           const cost = item.voucher?.points || 0;
 
-          // Add content
-          doc.fontSize(24).font('Helvetica-Bold').text('CARTER BANK', { align: 'center' });
-          doc.fontSize(14).text('Loyalty Program', { align: 'center' });
-          doc.moveDown(0.5);
-          doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke(); // Divider line
-    
-          doc.moveDown(1);
-          doc.fontSize(18).font('Helvetica-Bold').text('VOUCHER REDEEMED', { align: 'center' });
-          doc.moveDown(1);
-    
-          // Redemption details
-          doc.fontSize(12).font('Helvetica');
-          doc.text(`Customer: ${userName}`, { width: 400 });
-          doc.text(`Voucher: ${title}`, {width: 400});
-          doc.text(`Category: ${catName}`, {width: 400});
-          doc.text(`Quantity: 1 of ${qty}`, {width: 400});
-          doc.text(`Points Spent: ${cost.toLocaleString()} pts`, {width: 400});
-          doc.text(`Date: ${new Date().toLocaleString()}`, { width: 400 });
-          doc.moveDown(1);
-          doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-    
-          // Redemption code (big and prominent)
-          doc.moveDown(1);
-          doc.fontSize(20).font('Helvetica-Bold').text('REDEMPTION CODE', { align: 'center' });
-          doc.moveDown(0.5);
-          doc.fontSize(28).font('Courier-Bold').text(itemVoucherCode, { align: 'center', lineGap: 10 });
-          doc.moveDown(0.5);
-          doc.fontSize(10).font('Helvetica').text('Present this code at the counter', { align: 'center' });
-          doc.moveDown(1.5);
-          doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke(); // Divider line
-    
-          // Terms
-          doc.moveDown(0.5);
-          doc.fontSize(9).font('Helvetica').text('Valid for single use only. Non-transferable. Not redeemable for cash.', { align: 'center', width: 400 });
-        }
-      });
+          // =========================================================================
+          // 🏙️ SECTION 1: FULL-WIDTH TOP HEADER HERO BANNER
+          // =========================================================================
+          doc.rect(0, 0, doc.page.width, 140).fill(THEME_COLOR);
 
-      // Finalize PDF
+          // Render Text Elements directly centered onto the colored block fill layer
+          doc.fillColor('#ffffff'); // Set text ink color to white
+          doc.fontSize(28).font('Helvetica-Bold').text('CARTER REDEEM', 0, 45, { align: 'center' });
+          doc.fontSize(12).font('Helvetica').text('Loyalty Voucher — Official Redemption Pass', 0, 85, { align: 'center' });
+    
+          // =========================================================================
+          // 📋 SECTION 2: REDEMPTION TRANSACTION SPEC DETAILS TABLE
+          // =========================================================================
+          doc.fillColor('#1f2937'); // Set text ink color back to deep dark gray
+          doc.fontSize(16).font('Helvetica-Bold').text('Voucher Redemption Breakdown', 50, 180);
+          
+          // Gray layout row card block line
+          doc.moveTo(50, 205).lineTo(545, 205).lineWidth(1).strokeColor('#e5e7eb').stroke();
+
+          // Data Fields Layout Grid
+          let textY = 225;
+          const drawDataRow = (label, val) => {
+            doc.fontSize(11).font('Helvetica-Bold').fillColor('#6b7280').text(label, 60, textY);
+            doc.font('Helvetica-Bold').fillColor('#1f2937').text(val, 200, textY, { align: 'right', width: 335 });
+            textY += 28;
+          };
+
+          drawDataRow('Customer Name', userName);
+          drawDataRow('Reward Title', title);
+          drawDataRow('Category Log', catName);
+          drawDataRow('Quantity Count', `1 of ${qty}`);
+          drawDataRow('Points Exchanged', `${cost.toLocaleString()} pts`);
+          drawDataRow('Generation Timestamp', new Date().toLocaleString());
+
+          // Bottom divider line for table container block rules
+          doc.moveTo(50, textY + 5).lineTo(545, textY + 5).strokeColor('#e5e7eb').stroke();
+    
+          // =========================================================================
+          // 🎫 SECTION 3: THE PASS BADGE TICKET SECTION
+          // =========================================================================
+          const badgeY = textY + 40;
+          const badgeHeight = 130;
+          const badgeWidth = 495;
+
+          // Draw the rounded container ticket voucher pass card box frame block background
+          doc.roundedRect(50, badgeY, badgeWidth, badgeHeight, 12).fill(THEME_COLOR);
+
+          // Render inner text labels on left quadrant half zone
+          doc.fillColor('#ffffff');
+          doc.fontSize(10).font('Helvetica').text('REDEMPTION PASS VERIFICATION CODE', 75, badgeY + 25);
+          doc.fontSize(24).font('Courier-Bold').text(itemVoucherCode, 75, badgeY + 45);
+          
+          doc.fontSize(9).font('Helvetica').text('Present this digital coupon pass ticket code to a cashier merchant agent.', 75, badgeY + 85);
+          doc.text('Valid for single application use only context layers.', 75, badgeY + 98);
+
+          // Generate high-res image block asset buffer string from engine configuration hooks
+          const qrDataUrl = await QRCode.toDataURL(itemVoucherCode, { 
+            width: 110, 
+            margin: 1,
+            color: {
+              dark: THEME_COLOR, // Makes the QR code pixels match your theme color!
+              light: '#ffffff'
+            }
+          });
+          
+          // Render white safety box frame inside ticket canvas for scanner readability contrast
+          doc.roundedRect(420, badgeY + 10, 110, 110, 6).fill('#ffffff');
+          // Overlay QR code straight on top
+          doc.image(qrDataUrl, 420, badgeY + 10, { width: 110 });
+
+          // =========================================================================
+          // ⚖️ SECTION 4: FOOTER TERMS & CONDITIONS RULES
+          // =========================================================================
+          doc.fillColor('#9ca3af');
+          doc.fontSize(8).font('Helvetica').text('TERMS OF SERVICE LIABILITY DISCLOSURE', 0, badgeY + badgeHeight + 50, { align: 'center' });
+          doc.text('This digital certificate represents a points exchange asset transaction event log record history tracker stack layer component. Non-transferable. Not exchangeable or refundable for cash currency notes.', 50, badgeY + badgeHeight + 65, { align: 'center', width: 495, lineGap: 2 });
+        }
+      }
+
       doc.end();
- 
-      // Resolve when stream finishes
-      stream.on('finish', () => {
-        resolve({ filename, generatedCodes, filepath }); 
-      });
- 
-      stream.on('error', (err) => {
-        reject(err);
-      });
  
     } catch (error) {
       reject(error);
