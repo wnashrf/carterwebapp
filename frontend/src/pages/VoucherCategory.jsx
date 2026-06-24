@@ -316,43 +316,35 @@ function VoucherCategory() {
 
             <div className="mb-5">
               <h4 className="font-bold mb-3">Categories</h4>
-              <div className="grid g-2">
-                
-                {/*"All Vouchers" Baseline Option */}
-                <div className="col-6 mb-2">
-                  <div 
-                    onClick={() => navigate('/categories/all')}
-                    className={`flex flex-column align-items-center justify-content-center p-3 border-round-xl border-1 text-center cursor-pointer transition-all transition-duration-150 ${
-                      (!categoryId || categoryId === 'all')
-                        ? 'bg-secondary border-200 text-primary shadow-1 font-bold' 
-                        : 'bg-white border-200 hover:border-400 hover:shadow-1 text-secondary'
-                    }`}
-                    style={{ minHeight: '85px' }}
-                  >
-                    <i className={`pi pi-th-large text-xl mb-2 pointer-events-none ${(!categoryId || categoryId === 'all') ? 'text-primary' : 'text-secondary'}`} />
-                    <span className="text-xs font-semibold line-height-2 pointer-events-none">All Vouchers</span>
-                  </div>
+              {/*Categories Buttons */}
+              <div className="flex flex-wrap gap-2">
+                <div 
+                  onClick={() => navigate('/categories/all')}
+                  className={`px-3 py-2 border-round-xl text-sm transition-all transition-duration-150 cursor-pointer ${
+                    (!categoryId || categoryId === 'all')
+                      ? 'bg-white border-2 border-900 text-900 font-bold shadow-1' 
+          : 'bg-white border-1 border-200 hover:border-400 hover:shadow-1 text-secondary font-medium'
+                  }`}
+                >
+                  All Vouchers
                 </div>
 
-                {/* Live Database Driven Category Options mapping loop */}
+                {/*Database-Driven Category Options mapping loop */}
                 {visibleCategories.map(cat => {
                   const categoryUrlParam = cat.name.toLowerCase() === 'home & garden' ? 'home_garden' : cat._id;
                   const isActive = categoryId === categoryUrlParam || categoryId === cat._id;
 
                   return (
-                    <div key={cat._id} className="col-6 mb-2">
-                      <div 
-                        onClick={() => navigate(`/categories/${categoryUrlParam}`)}
-                        className={`flex flex-column align-items-center justify-content-center p-3 border-round-xl border-1 text-center cursor-pointer transition-all transition-duration-150 ${
-                          isActive 
-                            ? 'bg-secondary border-200 text-primary shadow-1 font-bold' 
-                            : 'bg-white border-200 hover:border-400 hover:shadow-1 text-secondary'
-                        }`}
-                        style={{ minHeight: '85px' }}
-                      >
-                        <i className={`pi ${categoryIcons[cat.name] || categoryIcons.General} text-xl mb-2 pointer-events-none ${isActive ? 'text-primary' : 'text-secondary'}`} />
-                        <span className="text-xs font-semibold line-height-2 pointer-events-none">{cat.name}</span>
-                      </div>
+                    <div 
+                      key={cat._id}
+                      onClick={() => navigate(`/categories/${categoryUrlParam}`)}
+                      className={`px-3 py-2 border-round-xl text-sm transition-all transition-duration-150 cursor-pointer ${
+                        isActive 
+                          ? 'bg-white border-2 border-900 text-900 font-bold shadow-1' 
+                          : 'bg-white border-1 border-200 hover:border-400 hover:shadow-1 text-secondary font-medium'
+                      }`}
+                    >
+                      {cat.name}
                     </div>
                   );
                 })}
@@ -360,7 +352,7 @@ function VoucherCategory() {
 
               {/* Dynamic "View All" Expansion Controller Toggle Trigger */}
               {categories.length > 3 && (
-                <div className="text-center mt-2">
+                <div className="text-left mt-3">
                   <Button 
                     label={isExpanded ? "Show Less" : `View All (+${categories.length - 3})`} 
                     link 
