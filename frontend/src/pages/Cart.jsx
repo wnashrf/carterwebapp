@@ -230,10 +230,6 @@ function Cart() {
             </nav>
           </div>
           <div className="flex align-items-center gap-3">
-            <span className="p-input-icon-left hidden md:inline-block">
-              <i className="pi pi-search" />
-              <InputText placeholder="Search vouchers..." className="home-search" />
-            </span>
             <Button icon="pi pi-shopping-cart" rounded text severity="secondary" onClick={() => navigate('/cart')}>
               <Badge value={items.length} severity="danger" className="home-cart-badge" />
             </Button>
