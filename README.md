@@ -9,6 +9,7 @@ Follow these steps to get your local development environment up and running.
 ## 📋 Prerequisites
 
 Make sure you have the following installed on your machine:
+
 - **Node.js** (v16+ recommended)
 - **npm** or **yarn**
 - **MongoDB** (Local instance running or a MongoDB Atlas cloud connection string)
@@ -16,16 +17,29 @@ Make sure you have the following installed on your machine:
 ## ⚙️ Setup & Installation
 
 ### 1. Clone the Repository
+
 ```bash
 git clone <your-repository-url>
 cd voucherwebapp
 ```
 
+---
+
 ### 2. Setup Environment Variables
-You need to set up environment configuration variables for both the backend and frontend.
+
+Environment templates are provided via `.env.example` files in both core directories. Copy these templates to create your active configurations.
 
 #### Backend Configuration
-Create a file named `.env` in the `backend/` folder:
+
+Navigate to the `backend/` folder, copy the template, and verify your keys:
+
+```bash
+cd backend
+cp .env.example .env
+```
+
+Ensure your locally created `.env` matches your environment:
+
 ```env
 PORT=5000
 MONGO_URI=mongodb://localhost:27017/vouchwise # Or your cloud Atlas URI
@@ -33,7 +47,16 @@ JWT_SECRET=your_super_secret_jwt_key
 ```
 
 #### Frontend Configuration
-Create a file named `.env` in the `frontend/` folder:
+
+Open a new terminal session, navigate to the `frontend/` folder, and copy its configuration template:
+
+```bash
+cd frontend
+cp .env.example .env
+```
+
+Ensure your configuration points to your local backend engine port:
+
 ```env
 REACT_APP_API_URL=http://localhost:5000/api
 REACT_APP_SERVER_URL=http://localhost:5000
@@ -44,15 +67,19 @@ REACT_APP_SERVER_URL=http://localhost:5000
 ### 3. Run the Backend Server
 
 Navigate to the `backend` folder, install the dependencies, and start the server:
+
 ```bash
 cd backend
 npm install
 npm run dev
 ```
-The server will typically start on `http://localhost:5000`.
+
+The server will initialize on `http://localhost:5000`.
 
 #### Database Seeding (Optional)
-To populate the database with seed categories, mock vouchers, and a demo user account, run:
+
+To populate your MongoDB workspace with core catalog categories, sample vouchers, and initialize your primary testing account balances, run:
+
 ```bash
 npm run seed
 ```
@@ -61,13 +88,15 @@ npm run seed
 
 ### 4. Run the Frontend App
 
-Open a new terminal window, navigate to the `frontend` folder, install dependencies, and start the app:
+Navigate to the frontend folder, install the client dependencies, and boot up the UI server:
+
 ```bash
 cd frontend
 npm install
 npm start
 ```
-The application will automatically spin up in your default web browser at `http://localhost:3000`.
+
+The web application will spin up automatically in your browser window at `http://localhost:3000`.
 
 ---
 
@@ -104,6 +133,6 @@ voucherwebapp/
 ## 🔑 Demo Credentials
 
 Once the database has been seeded, you can sign in using the following test account:
-- **Username / Email:** `demo@example.com`
-- **Password:** `DemoPass123`
 
+- **Username / Email:** `demo@example.com`
+- **Password:** `Password123`
