@@ -183,7 +183,7 @@ function Home() {
                 <strong>{loading ? '...' : vouchers.length}</strong>
               </div>
               <div className="home-stat">
-                <span>Total points value</span>
+                <span>Total voucher pts value</span>
                 <strong>{loading ? '...' : totalPoints.toLocaleString()}</strong>
               </div>
             </div>

@@ -3,16 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
-import { Divider } from 'primereact/divider';
 import { Message } from 'primereact/message';
 import { classNames } from 'primereact/utils';
 import { loginUser, signupUser } from '../api/auth';
 import './Login.css';
-
-// 1. Defensive check for environment variables to prevent ReferenceErrors
-// 2. Provide a fallback URL for local development
-const API_BASE = (typeof process !== 'undefined' ? process.env.REACT_APP_API_URL : null) || 
-                 'http://localhost:5000/api';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -44,10 +38,8 @@ const Login = () => {
 
     try {
       let data;
-      
       if (isLogin) {
         data = await loginUser(formData.email, formData.password);
-        
         if (data.token) {
           localStorage.setItem('token', data.token);
           navigate('/Home'); 
@@ -68,48 +60,42 @@ const Login = () => {
 
   return (
     <div className="login-page">
-      <div className="login-card p-4 sm:p-6">
-        <div className="text-center mb-5">
-          <i className="pi pi-ticket login-logo" />
-          <div className="login-title">{isLogin ? 'Welcome Back' : 'Join VouchWise'}</div>
-          <span className="login-subtitle">
-            {isLogin
-              ? 'Sign in to access your voucher vault'
-              : 'Create an account to start redeeming'}
-          </span>
-        </div>
+      {/* ─── LEFT PANEL: THE MANUAL FORM PANELS ─── */}
+      <div className="login-form-container">
+        <div className="login-card-clean">
+          <div className="mb-5">
+            <div className="login-title-clean">{isLogin ? 'Welcome back' : 'Create account'}</div>
+            <span className="login-subtitle-clean">
+              {isLogin ? 'Please enter your details to sign in.' : 'Please fill in your detail parameters below.'}
+            </span>
+          </div>
 
-        {error ? (
-          <Message severity="error" text={error} className="w-full mb-4 justify-content-start" />
-        ) : null}
+          {error ? (
+            <Message severity="error" text={error} className="w-full mb-4 justify-content-start" />
+          ) : null}
 
-        <form onSubmit={handleSubmit}>
-          {!isLogin ? (
-            <div className="field mb-4">
-              <label htmlFor="username" className="login-label">
-                Full Name
-              </label>
-              <span className="p-input-icon-left w-full">
-                <i className="pi pi-user" />
+          <form onSubmit={handleSubmit}>
+            {!isLogin ? (
+              <div className="field mb-4">
+                <label htmlFor="username" className="login-label-clean">
+                  Username
+                </label>
                 <InputText
                   id="username"
                   name="username"
                   value={formData.username}
                   onChange={handleChange}
-                  placeholder="John Doe"
-                  className="w-full"
+                  placeholder="e.g. jsmith23"
+                  className="w-full p-inputtext-lg"
                   required
                 />
-              </span>
-            </div>
-          ) : null}
+              </div>
+            ) : null}
 
-          <div className="field mb-4">
-            <label htmlFor="email" className="login-label">
-              Email
-            </label>
-            <span className="p-input-icon-left w-full">
-              <i className="pi pi-envelope" />
+            <div className="field mb-4">
+              <label htmlFor="email" className="login-label-clean">
+                Email address
+              </label>
               <InputText
                 id="email"
                 name="email"
@@ -117,84 +103,68 @@ const Login = () => {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="name@vouchwise.com"
+                className="w-full p-inputtext-lg"
+                required
+              />
+            </div>
+
+            <div className="field mb-4">
+              <div className="flex align-items-center justify-content-between mb-2">
+                <label htmlFor="password" className="login-label-clean m-0">
+                  Password
+                </label>
+                {isLogin ? (
+                  <a href="#forgot" className="login-forgot-clean">
+                    Forgot password?
+                  </a>
+                ) : null}
+              </div>
+              <Password
+                inputId="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="••••••••"
+                toggleMask
+                feedback={!isLogin}
+                inputClassName="w-full p-inputtext-lg"
                 className="w-full"
                 required
               />
-            </span>
-          </div>
-
-          <div className="field mb-2">
-            <div className="flex align-items-center justify-content-between">
-              <label htmlFor="password" className="login-label">
-                Password
-              </label>
-              {isLogin ? (
-                <a href="#forgot" className="login-forgot">
-                  Forgot password?
-                </a>
-              ) : null}
             </div>
-            <Password
-              inputId="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="••••••••"
-              toggleMask
-              feedback={!isLogin}
-              inputClassName="w-full"
-              className="w-full"
-              required
+
+            <Button
+              type="submit"
+              label={loading ? 'Authenticating...' : isLogin ? 'Sign in' : 'Create Account'}
+              className="w-full p-button-lg p-button-teal mt-2"
+              loading={loading}
             />
-          </div>
+          </form>
 
-          <Button
-            type="submit"
-            label={loading ? 'Authenticating...' : isLogin ? 'Sign In' : 'Create Account'}
-            icon={classNames('pi', { 'pi-sign-in': isLogin, 'pi-user-plus': !isLogin })}
-            className="w-full mt-4"
-            loading={loading}
-          />
-        </form>
-
-        <Divider align="center" className="my-4">
-          <span className="login-divider-text">OR</span>
-        </Divider>
-
-        <div className="grid">
-          <div className="col-6">
+          <div className="text-center mt-5 text-sm font-medium">
+            <span className="text-600">
+              {isLogin ? "Don't have an account? " : 'Already have an account? '}
+            </span>
             <Button
               type="button"
-              label="Google"
-              icon="pi pi-google"
-              severity="secondary"
-              outlined
-              className="w-full"
-            />
-          </div>
-          <div className="col-6">
-            <Button
-              type="button"
-              label="Apple"
-              icon="pi pi-apple"
-              severity="secondary"
-              outlined
-              className="w-full"
+              label={isLogin ? 'Sign up' : 'Sign in'}
+              link
+              className="p-0 font-bold text-teal-600"
+              onClick={handleToggle}
             />
           </div>
         </div>
+      </div>
 
-        <div className="text-center mt-5">
-          <span className="login-subtitle">
-            {isLogin ? "Don't have an account? " : 'Already have an account? '}
-          </span>
-          <Button
-            type="button"
-            label={isLogin ? 'Create account' : 'Sign in'}
-            link
-            className="login-toggle p-0"
-            onClick={handleToggle}
-          />
+      {/* ─── RIGHT PANEL: PREMIUM TEAL BRANDING VISUAL ─── */}
+      <div className="login-visual-panel">
+        <div className="visual-splash-circle" />
+        <div className="visual-content-wrapper text-center">
+          <i className="pi pi-ticket visual-icon-frame" />
+          <div className="visual-tagline">VouchWise Smart Rewards System</div>
+          <p className="visual-description">
+            Your single unified marketplace container to track, discover, and instantly redeem points for premium retail vouchers nationwide.
+          </p>
         </div>
       </div>
     </div>

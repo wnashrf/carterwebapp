@@ -15,3 +15,53 @@ code {
 html {
   overflow-y: scroll;
 }
+
+/* ── Mobile Header Optimization Layout ── */
+@media (max-width: 991px) {
+  
+  /* 1. Hide the alphanumeric brand name string while keeping the layout container unbroken */
+  .home-brand {
+    font-size: 0 !important; /* Makes the plain-text invisible */
+    display: inline-flex;
+    align-items: center;
+  }
+  
+  /* 2. Ensure the ticket icon graphic inside the brand block remains large and visible */
+  .home-brand .pi-ticket {
+    font-size: 1.6rem !important;
+    margin-right: 0 !important; /* Strip the right margin since text is gone */
+    color: #0d9488 !important;   /* Matches your signature brand identity color */
+  }
+
+  /* 3. Force the parent block to span fluidly without throwing items onto new vertical baselines */
+  .home-topbar__inner {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    padding: 12px 0 !important;
+  }
+
+  /* 4. Target the wrapper holding both the logo icon and the navigation links */
+  .home-topbar__inner > .flex.align-items-center.gap-4 {
+    display: flex !important;
+    align-items: center !important;
+    gap: 16px !important;
+    flex: 1 !important; /* Allow it to claim the available empty horizontal channel space */
+  }
+
+  /* 5. Force the navigation menu back into the header row fluidly next to the isolated logo */
+  .home-nav {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 16px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 6. Tighten link text formatting metrics to prevent card line breaks on narrow smartphone windows */
+  .home-nav__link {
+    font-size: 0.9rem !important;
+    padding-bottom: 2px !important;
+  }
+}
