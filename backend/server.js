@@ -16,7 +16,14 @@ const app = express();
 connectDB();
  
 // Middleware
-app.use(cors());
+const allowedOrigins = process.env.FRONTEND_URL 
+  ? [process.env.FRONTEND_URL] 
+  : ['http://localhost:3000'];
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
 app.use(express.json());
 app.get('/api/vouchers/download/:filename', (req, res) => {
   const filename = req.params.filename;
