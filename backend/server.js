@@ -16,12 +16,8 @@ const app = express();
 connectDB();
  
 // Middleware
-const allowedOrigins = process.env.FRONTEND_URL 
-  ? [process.env.FRONTEND_URL] 
-  : ['http://localhost:3000'];
-
 app.use(cors({
-  origin: allowedOrigins,
+  origin: '*',
   credentials: true
 }));
 app.use(express.json());
