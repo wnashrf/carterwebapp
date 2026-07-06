@@ -2,6 +2,10 @@
 
 Welcome to the VouchWise / Carter Redeem repository! This is a full-stack MERN application designed for exploring, managing, and redeeming premium brand vouchers using dynamic loyalty points balances.
 
+## 🏆 MyMahir Capstone Project
+
+> _Developed as the final full-stack capstone project for the MyMahir MERN Full Stack Talent Development Program to demonstrate end-to-end RESTful API engineering, responsive React interface design, and secure database architecture._
+
 ## 🚀 Getting Started
 
 Follow these steps to get your local development environment up and running.
