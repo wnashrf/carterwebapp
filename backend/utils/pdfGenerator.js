@@ -56,7 +56,7 @@ async function generateRedemptionPDF(redemptionData) {
 
           // Render Text Elements directly centered onto the colored block fill layer
           doc.fillColor('#ffffff'); // Set text ink color to white
-          doc.fontSize(28).font('Helvetica-Bold').text('CARTER REDEEM', 0, 45, { align: 'center' });
+          doc.fontSize(28).font('Helvetica-Bold').text('VouchWise Redeem', 0, 45, { align: 'center' });
           doc.fontSize(12).font('Helvetica').text('Loyalty Voucher — Official Redemption Pass', 0, 85, { align: 'center' });
     
           // =========================================================================

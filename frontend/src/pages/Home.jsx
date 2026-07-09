@@ -119,7 +119,7 @@ function Home() {
           <div className="flex align-items-center gap-4">
             <span className="home-brand" style={{ cursor: 'pointer' }} onClick={() => navigate('/home')}>
               <i className="pi pi-ticket mr-2" />
-              Carter Redeem
+              VouchWise Redeem
             </span>
             <nav className="home-nav hidden lg:flex gap-3">
               {navItems.map((item, index) => (
@@ -311,7 +311,7 @@ function Home() {
 
         {/* ---------- Bento highlights ---------- */}
         <section className="home-section">
-          <h2 className="mb-3">Fresh on Carter Redeem</h2>
+          <h2 className="mb-3">Fresh on VouchWise Redeem</h2>
           <div className="grid">
             <div className="col-12 lg:col-6">
               <div className="home-bento home-bento--feature h-full">
@@ -367,7 +367,7 @@ function Home() {
           <div className="col-12 md:col-5">
             <span className="home-brand">
               <i className="pi pi-ticket mr-2" />
-              Carter Redeem
+              VouchWise Redeem
             </span>
             <p className="mt-2">
               A modern voucher home page powered by your React frontend and MongoDB
@@ -391,7 +391,7 @@ function Home() {
           </div>
         </div>
         <div className="home-footer__bottom">
-          Copyright 2026 Carter Redeem Web App Voucher Management.
+          Copyright 2026 VouchWise Redeem Web App Voucher Management.
         </div>
       </footer>
 
