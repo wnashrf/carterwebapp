@@ -1,6 +1,6 @@
-# 🎫 VouchWise / Carter Redeem – Voucher Management System
+# 🎫 VouchWise / VouchWise Redeem – Voucher Management System
 
-Welcome to the VouchWise / Carter Redeem repository! This is a full-stack MERN application designed for exploring, managing, and redeeming premium brand vouchers using dynamic loyalty points balances.
+Welcome to the VouchWise / VouchWise Redeem repository! This is a full-stack MERN application designed for exploring, managing, and redeeming premium brand vouchers using dynamic loyalty points balances.
 
 ## 🏆 MyMahir Capstone Project
 

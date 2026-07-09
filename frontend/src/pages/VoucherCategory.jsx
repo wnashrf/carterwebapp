@@ -265,7 +265,7 @@ function VoucherCategory() {
           <div className="flex align-items-center gap-4">
             <span className="home-brand" style={{ cursor: 'pointer' }} onClick={() => navigate('/home')}>
               <i className="pi pi-ticket mr-2" />
-              Carter Redeem
+              VouchWise Redeem
             </span>
             <nav className="home-nav hidden lg:flex gap-3">
               {navItems.map((item, index) => (
@@ -585,7 +585,7 @@ function VoucherCategory() {
           <div className="col-12 md:col-5">
             <span className="home-brand">
               <i className="pi pi-ticket mr-2" />
-              Carter Redeem
+              VouchWise Redeem
             </span>
             <p className="mt-2 text-sm opacity-70">
               A modern voucher home page powered by your React frontend and MongoDB
@@ -609,7 +609,7 @@ function VoucherCategory() {
           </div>
         </div>
         <div className="home-footer__bottom opacity-50 text-xs">
-          Copyright 2026 Carter Redeem Web App Voucher Management.
+          Copyright 2026 VouchWise Redeem Web App Voucher Management.
         </div>
       </footer>
     </div>
