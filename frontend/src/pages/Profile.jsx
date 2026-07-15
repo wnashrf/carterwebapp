@@ -22,13 +22,6 @@ const navItems = [
 const profileImage =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuCBSuIxUxfHg4wgNs3r-LO4qo6VNboOmg9Kb3aXO51jImuiyOFvXuTrd1wLc7zuGzCYjXZ5uW-DcC-AM0Dx6_HcT74tKyPAwBRGp9jf4ENR6pu1lD2E_6w-CWtUcsf33qMmCjPjGRar-Zs9Ux64NQXcqqYWPA6KLkOYxYtkNHGbhGV1nufUeRWL1bJjpYyc06lh1E3ZH_apHor12onMvLgo1q_GTHEL_AAjC1AMDXJ4yvYmKVbneaw-U35QqqQp0k0tHC7X_odbbPf5';
 
-const recentActivity = [
-  { id: 1, icon: 'pi-check-circle', color: '#22c55e', label: 'Redeemed Starbucks RM10 Voucher', pts: '-1,000 pts', date: 'Today, 10:32 AM' },
-  { id: 2, icon: 'pi-gift', color: '#3b82f6', label: 'Earned points from login bonus', pts: '+500 pts', date: 'Yesterday, 8:00 AM' },
-  { id: 3, icon: 'pi-shopping-cart', color: '#f59e0b', label: 'Added GrabFood voucher to cart', pts: '', date: '12 Jun 2026' },
-  { id: 4, icon: 'pi-check-circle', color: '#22c55e', label: 'Redeemed Shopee RM50 Gift Card', pts: '-5,000 pts', date: '10 Jun 2026' },
-];
-
 function Profile() {
   const navigate = useNavigate();
   const toast = useRef(null);
