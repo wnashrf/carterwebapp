@@ -1,15 +1,9 @@
-const express = require('express');
-const router = express.Router();
-const c = require('../controllers/categoryController');
+const router = require('express').Router();
+const { getAllCategories, getCategoryById, createCategory } = require('../controllers/categoryController');
+const verifyToken = require('../middleware/auth');
 
-// Get all categories
-router.get('/', c.getAllCategories);
-
-// Get category by ID
-router.get('/:id', c.getCategoryById);
-
-// Create new category
-router.post('/', c.createCategory);
+router.get('/', getAllCategories);
+router.get('/:id', getCategoryById);
+router.post('/', verifyToken, createCategory);
 
 module.exports = router;
-

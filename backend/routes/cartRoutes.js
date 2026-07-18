@@ -1,21 +1,21 @@
 const router = require('express').Router();
-const c = require('../controllers/cartController');
-const redeemController = require('../controllers/redeemController');
+const { addToCart, getCartForUser, updateQuantity, deleteFromCart } = require('../controllers/cartController');
+const { redeem, redeemSingle } = require('../controllers/redeemController');
 const RedeemedVoucher = require('../models/RedeemedVoucher');
-const auth = require('../middleware/auth');
+const verifyToken = require('../middleware/auth');
 
-router.post('/', auth, c.addToCart);
-router.get('/user', auth, c.getCartForUser);
-router.post('/redeem', auth, redeemController.redeem);
-router.post('/redeem-single', auth, redeemController.redeemSingle);
-router.patch('/:id', auth, c.updateQuantity);
-router.delete('/:id', auth, c.deleteFromCart);
-router.get('/history', auth, async (req, res) => {
+router.post('/', verifyToken, addToCart);
+router.get('/user', verifyToken, getCartForUser);
+router.post('/redeem', verifyToken, redeem);
+router.post('/redeem-single', verifyToken, redeemSingle);
+router.patch('/:id', verifyToken, updateQuantity);
+router.delete('/:id', verifyToken, deleteFromCart);
+
+router.get('/history', verifyToken, async (req, res) => {
   try {
     const walletItems = await RedeemedVoucher.find({ user: req.userId })
       .populate({ path: 'voucher', populate: { path: 'category_id' } })
       .sort({ createdAt: -1 });
-      
     res.status(200).json(walletItems);
   } catch (err) {
     res.status(500).json({ message: err.message });
