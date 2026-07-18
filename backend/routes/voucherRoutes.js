@@ -1,12 +1,12 @@
-// routes/voucherRoutes.js
 const router = require('express').Router();
-const c = require('../controllers/voucherController');
- 
-router.post('/', c.createVoucher);
-router.get('/', c.getVouchers);
-router.get('/:id', c.getVoucherById);
-router.put('/:id', c.updateVoucher);
-router.patch('/:id', c.updateVoucher);
-router.delete('/:id', c.deleteVoucher);
+const { createVoucher, getVouchers, getVoucherById, updateVoucher, deleteVoucher } = require('../controllers/voucherController');
+const verifyToken = require('../middleware/auth');
+
+router.get('/', getVouchers);
+router.get('/:id', getVoucherById);
+router.post('/', verifyToken, createVoucher);
+router.put('/:id', verifyToken, updateVoucher);
+router.patch('/:id', verifyToken, updateVoucher);
+router.delete('/:id', verifyToken, deleteVoucher);
  
 module.exports = router;
